@@ -1,0 +1,3669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Quiz Master: a modern quiz trainer. Load quizzes from TXT files or raw URLs, with randomization, timers, i18n (EN/ID), keyboard shortcuts and full accessibility.">
+<meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15110c" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Quiz Master: Tes Wawasanmu">
+<meta property="og:description" content="Modern quiz platform: load .txt quizzes or raw URLs, randomized questions, timer, EN/ID, keyboard-ready.">
+<meta property="og:type" content="website">
+<title>Quiz Master: Tes Wawasanmu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23d93a1f'/><text x='32' y='45' font-family='Segoe UI,Arial,sans-serif' font-size='38' font-weight='700' fill='%23fff' text-anchor='middle'>B</text></svg>">
+<style>
+/* ============================================================================
+   DESIGN LANGUAGE: "neo-brutalist print-shop" (spec: ui.txt)
+   Cream paper, bone cards, 1.5px near-black rules, hard offset shadows with no
+   blur, medium radii, one vermillion accent. Borrowed from a print-shop proof:
+     - display: Archivo Black, uppercase, tight tracking (titles only)
+     - body:    Space Grotesk (question stems, prose, option text)
+     - meta:    IBM Plex Mono, uppercase, wide tracking (labels, chips, numbers)
+   Every selector below is original CSS. No vendor tokens are imported.
+
+   Dials for this build: DESIGN_VARIANCE 6 (offset, not artsy chaos),
+   MOTION_INTENSITY 6 (feedback + state transitions, all reduced-motion gated),
+   VISUAL_DENSITY 5 (a focused app surface, not a cockpit).
+
+   Shape lock: containers 16px, controls 11px, chips 999px (9px for small
+   squares); circles reserved for the score ring, the status dot and socials.
+   Colour lock: ONE accent (vermillion) + semantic correct / wrong / skipped.
+   Contrast: white on --brand measures 4.59:1 (text-safe step #d93a1f), while
+   the pure #e8432a carries no text: highlights, marks and fills only.
+   ============================================================================ */
+:root{
+  color-scheme: light;
+  /* accent. --brand is the text-safe step of the vermillion (#d93a1f, white on
+     it 4.59:1); --brand-bright is the pure #e8432a for marks carrying no text. */
+  --brand:#d93a1f;
+  --brand-bright:#e8432a;
+  --brand-dark:#b73318;
+  --brand-soft:#ffe4dc;
+  --on-brand:#ffffff;
+
+  --canvas:#f4efe4;       /* paper */
+  --surface:#fffdf6;      /* bone card */
+  --surface-2:#faf6ec;
+  --ink:#1b1610;          /* near-black. Never #000, never pure #fff. */
+  --ink-soft:#6b6154;
+  --line:#ddd4c2;
+  --line-strong:#b9ae99;
+
+  --ok:#0b7a4f;--no:#b3261e;--skip:#8a5a00;
+  --ok-soft:#e0f2e9;--no-soft:#fbe9e7;--skip-soft:#fdf2df;
+
+  --r-lg:16px;--r-md:11px;--r-sm:9px;
+  /* Shadows: hard ink under controls, soft ink under surfaces, mid for dialogs. */
+  --sh:rgba(27,22,16,.85);
+  --pop:6px 7px 0 rgba(27,22,16,.14);
+  --pop-sm:2.5px 3px 0 var(--sh);
+  --pop-lg:8px 9px 0 rgba(27,22,16,.3);
+  --overlay:rgba(27,22,16,.55);
+  --canvas-veil:rgba(244,239,228,.94);
+  --gap-shell:clamp(14px,2vw,22px);
+
+  --ease:cubic-bezier(.2,.75,.25,1);
+  --t:150ms var(--ease);
+  --font-display:"Archivo Black","Arial Black",system-ui,sans-serif;
+  --font-sans:"Space Grotesk","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:"IBM Plex Mono","Cascadia Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+/* Dark theme. Declared twice on purpose: once for the system preference (unless
+   the user forced light) and once for the manual override. Two blocks, one
+   vocabulary: the app supports light, dark and auto. */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    /* Print-shop at night: warm near-black paper, bone text, same vermillion. */
+    --brand:#d93a1f;--brand-bright:#e8432a;--brand-soft:#3a211a;--on-brand:#ffffff;
+    --canvas:#15110c;--surface:#1e1913;--surface-2:#241f18;
+    --ink:#f4efe4;--ink-soft:#a99e8b;--line:#3a332a;--line-strong:#5f574a;
+    --ok:#4ade80;--no:#ff8a80;--skip:#fbbf24;
+    --ok-soft:#12261b;--no-soft:#2c1a18;--skip-soft:#2b2210;
+    --sh:rgba(0,0,0,.75);
+    --pop:6px 7px 0 rgba(0,0,0,.5);--pop-sm:2.5px 3px 0 var(--sh);
+    --pop-lg:8px 9px 0 rgba(0,0,0,.6);--overlay:rgba(0,0,0,.62);
+    --canvas-veil:rgba(21,17,12,.94);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  /* Print-shop at night: warm near-black paper, bone text, same vermillion. */
+  --brand:#d93a1f;--brand-bright:#e8432a;--brand-soft:#3a211a;--on-brand:#ffffff;
+  --canvas:#15110c;--surface:#1e1913;--surface-2:#241f18;
+  --ink:#f4efe4;--ink-soft:#a99e8b;--line:#3a332a;--line-strong:#5f574a;
+  --ok:#4ade80;--no:#ff8a80;--skip:#fbbf24;
+  --ok-soft:#12261b;--no-soft:#2c1a18;--skip-soft:#2b2210;
+  --sh:rgba(0,0,0,.75);
+  --pop:6px 7px 0 rgba(0,0,0,.5);--pop-sm:2.5px 3px 0 var(--sh);
+  --pop-lg:8px 9px 0 rgba(0,0,0,.6);--overlay:rgba(0,0,0,.62);
+  --canvas-veil:rgba(21,17,12,.94);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none !important}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{
+  /* Three faces from the Google CDN. Offline, or opened from file://, they fall
+     back to the system stack: the app keeps running with no network. */
+  font-family:var(--font-sans);
+  background:var(--canvas);
+  color:var(--ink);
+  min-height:100svh;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-wrap:break-word;
+}
+::selection{background:var(--brand);color:var(--on-brand)}
+/* Paper grain: a fixed, pointer-events-free layer so it never repaints while
+   scrolling (see DOM cost guidance). */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(var(--ink) 1px,transparent 1px);
+  background-size:22px 22px;opacity:.05;
+}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+img,svg{display:block;max-width:100%}
+.icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon-sm{width:16px;height:16px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- Layout: fluid sheet, no desktop zoom ---------- */.app-shell{
+  position:relative;z-index:1;
+  min-height:100svh;min-height:100dvh;
+  display:flex;flex-direction:column;gap:var(--gap-shell);
+  padding:clamp(12px,2.4vw,30px);
+}
+.shell-inner{width:100%;max-width:1000px;margin-inline:auto;flex:1;display:flex;flex-direction:column;gap:var(--gap-shell)}
+.app-card{
+  width:100%;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--r-lg);box-shadow:var(--pop);
+  padding:clamp(18px,3vw,40px);
+}
+@media (min-width:1440px){.shell-inner{max-width:1120px}}
+
+/* Headings break evenly instead of leaving a lopsided second line. balance is
+   ignored past a few lines anyway, so it is safe on every title in the app. */
+.home-title,.screen-title,.quiz-title,.modal-head h2{text-wrap:balance}
+
+/* ---------- Topbar: 1 line, 64px on desktop ---------- */
+/* The header sticks while its own bottom padding covers the shell gap, so
+   content passes under the veil instead of through a transparent band. The
+   edge is that veil and the gap below it: there is deliberately no bottom
+   rule on the header (the 1.5px ink rule was removed 2026-09-30). */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  min-height:56px;padding-bottom:var(--gap-shell);margin-bottom:calc(-1 * var(--gap-shell));
+  background:var(--canvas-veil);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+/* The quiz owns the viewport: while it runs, the app header is gone at every
+   width so nothing competes with the question and the answers. It comes back
+   on home, settings and result. */
+body.quiz-active .topbar{display:none}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand-mark{
+  width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;
+  border:1.5px solid var(--ink);border-radius:11px;background:var(--brand);color:var(--on-brand);
+  box-shadow:var(--pop-sm);font-family:var(--font-display);font-weight:400;font-size:1.2rem;letter-spacing:-.04em;
+}
+.brand-name{
+  font-family:var(--font-mono);font-weight:700;font-size:12.5px;letter-spacing:.13em;
+  text-transform:uppercase;white-space:nowrap;
+}
+.topbar-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+/* Segmented control: same shape family as the import tabs, one pressed cell. */
+.lang-toggle{display:flex;border:1.5px solid var(--ink);border-radius:var(--r-md);background:var(--surface);overflow:hidden}
+.lang-toggle button{
+  min-height:44px;padding:0 14px;display:inline-flex;align-items:center;border-radius:0;
+  font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft);
+  transition:background var(--t),color var(--t);
+}
+.lang-toggle button+button{border-left:1.5px solid var(--ink)}
+.lang-toggle button[aria-pressed="true"]{background:var(--ink);color:var(--canvas)}
+
+/* ---------- Buttons: one shape (14px), one accent, visible press ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-width:0;min-height:50px;padding:11px 20px;
+  border:1.5px solid var(--ink);border-radius:var(--r-md);
+  background:var(--surface);color:var(--ink);font-weight:700;font-size:14px;letter-spacing:.05em;
+  box-shadow:var(--pop-sm);
+  transition:transform var(--t),box-shadow var(--t),background var(--t),color var(--t),opacity var(--t);
+}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4.5px 5.5px 0 var(--sh)}
+.btn:active{transform:translate(1.5px,1.5px);box-shadow:1px 1px 0 var(--sh)}
+@media (min-width:600px){.btn{white-space:nowrap}}
+/* Primary = the one accent action on the screen (white on #d93a1f = 4.59:1). */
+.btn-primary{background:var(--brand);border-color:var(--brand-dark);color:var(--on-brand)}
+.btn-secondary{background:var(--surface);color:var(--ink)}
+.btn-ghost{background:transparent;border-color:var(--line-strong);color:var(--ink-soft);box-shadow:none}
+.btn-ghost:hover{border-color:var(--ink);box-shadow:2.5px 3px 0 var(--sh);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:var(--pop-sm)}
+/* An SVG is a replaced element with an automatic minimum size of zero, so inside
+   a flex button it is the first thing to be crushed when the label is long. */
+.btn .icon{flex:0 0 auto;width:1.1em;height:1.1em}
+.btn-row{display:grid;gap:10px;grid-template-columns:1fr}
+@media (min-width:560px){.btn-row{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}}
+
+/* ---------- Screens: entry transition (communicates a state change) ---------- */
+.screen{display:none;flex-direction:column;gap:clamp(16px,2.4vw,26px)}
+.screen.active{display:flex}
+.screen.active>*{animation:riseIn .45s var(--ease) both}
+.screen.active>*:nth-child(2){animation-delay:45ms}
+.screen.active>*:nth-child(3){animation-delay:90ms}
+.screen.active>*:nth-child(4){animation-delay:135ms}
+.screen.active>*:nth-child(5){animation-delay:180ms}
+.screen.active>*:nth-child(6){animation-delay:225ms}
+.screen.active>*:nth-child(7){animation-delay:270ms}
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;animation-delay:0ms !important}
+}
+
+/* ---------- Home: left-aligned sheet header (no centered hero) ---------- */
+.home-header{display:flex;flex-direction:column;gap:12px;max-width:64ch}
+/* The sheet header shares its row with the back-to-role control, so the
+   escape hatch never costs a block of its own. */
+.home-head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.home-title{
+  font-family:var(--font-display);font-weight:400;text-transform:uppercase;
+  font-size:clamp(1.85rem,4.6vw,2.75rem);line-height:.98;letter-spacing:-.015em;
+}
+.home-sub{color:var(--ink-soft);font-size:clamp(.95rem,1.7vw,1.04rem);max-width:56ch;text-wrap:pretty}
+.home-actions{display:grid;gap:10px;grid-template-columns:1fr}
+/* One way in: the entry button stretches, and the file, link and code paths
+   live as tabs inside the import modal. It is a secondary action, so it does
+   not wear accent. */
+.home-input-row{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){
+  .home-actions{grid-template-columns:1.4fr 1fr}
+  .home-actions .btn-start{grid-column:1/-1}
+  /* The input row keeps a row of its own so the template helper sits right
+     under it at every width; the two quiet buttons share the row below. */
+  .home-actions .home-input-row{grid-column:1/-1}
+}
+/* ---------- Landing: pick a role, two stacked cards ---------- */
+/* Both choices carry the same weight (same card, same icon chip size); only
+   the chip fill differs, accent for the teacher path. Stacked at every width:
+   this is a fork in the flow, not a pair to compare side by side. */
+.role-actions{display:grid;gap:12px}
+.role-btn{
+  display:flex;align-items:center;gap:14px;width:100%;min-height:88px;padding:15px 17px;
+  border:1.5px solid var(--ink);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);
+  box-shadow:var(--pop-sm);text-align:left;
+  transition:transform var(--t),box-shadow var(--t),background var(--t),color var(--t);
+}
+.role-btn:hover{transform:translate(-1px,-1px);box-shadow:4.5px 5.5px 0 var(--sh)}
+.role-btn:active{transform:translate(1.5px,1.5px);box-shadow:1px 1px 0 var(--sh)}
+.role-chip{
+  width:52px;height:52px;flex:0 0 auto;display:grid;place-items:center;
+  border:1.5px solid var(--ink);border-radius:var(--r-md);
+}
+.role-chip .icon{width:26px;height:26px}
+.role-chip-teacher{background:var(--brand);color:var(--on-brand)}
+.role-chip-student{background:var(--ink);color:var(--canvas)}
+.role-copy{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;min-width:0}
+.role-name{
+  font-family:var(--font-display);font-weight:400;text-transform:uppercase;
+  font-size:clamp(1.15rem,3.4vw,1.4rem);line-height:1.05;letter-spacing:-.01em;
+}
+.role-hint{font-size:.85rem;color:var(--ink-soft);text-wrap:pretty}
+.role-arrow{width:20px;height:20px;flex:0 0 auto;color:var(--ink-soft)}
+
+/* ---------- Teacher: the generate step sits above the loader ---------- */
+.teacher-generate{display:grid;gap:10px}
+.teacher-hint{font-size:.85rem;color:var(--ink-soft);max-width:64ch;text-wrap:pretty}
+/* The one anchor styled as a button (Buat Soal). */
+a.btn{text-decoration:none}
+
+.last-quiz{
+  display:none;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  /* Secondary surface, marked as secondary by the dashed hairline used on every
+     other quiet panel here. No coloured edge: this card holds no state. */
+  background:var(--surface-2);border:1.5px dashed var(--line-strong);
+  border-radius:var(--r-md);padding:13px 16px;font-size:.92rem;
+}
+.last-quiz.visible{display:flex}
+.lq-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lq-label{font-family:var(--font-mono);font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.12em}
+.lq-meta{font-family:var(--font-mono);font-size:.8rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.lq-btn{min-height:44px;padding:8px 16px;font-size:.8rem}
+.privacy-note{
+  display:flex;gap:9px;align-items:flex-start;font-size:.82rem;color:var(--ink-soft);
+  border-top:1.5px dashed var(--line-strong);padding-top:14px;
+}
+.privacy-note .icon{flex:0 0 auto;margin-top:2px}
+
+/* ---------- Footer ---------- */
+.app-footer{margin-top:auto;padding:18px 0 6px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.social-row{display:flex;gap:12px;justify-content:center}
+.social-icon{
+  width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface);color:var(--ink);border:1.5px solid var(--ink);box-shadow:var(--pop-sm);
+  transition:transform var(--t),background var(--t),color var(--t),box-shadow var(--t);
+}
+.social-icon:hover{transform:translate(-1px,-1px);box-shadow:4.5px 5.5px 0 var(--sh);background:var(--brand);color:var(--on-brand)}
+.social-icon:active{transform:translate(1.5px,1.5px);box-shadow:1px 1px 0 var(--sh)}
+.social-icon svg{width:20px;height:20px;fill:currentColor}
+.footer-copy{
+  display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.7rem;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft);
+}
+.footer-copy .icon{width:15px;height:15px}
+
+/* ---------- Settings: segmented controls, same shape family as buttons ---------- */
+.settings-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.screen-title{
+  font-family:var(--font-display);font-weight:400;text-transform:uppercase;
+  font-size:clamp(1.3rem,2.6vw,1.6rem);line-height:1.12;letter-spacing:-.01em;
+}
+.settings-group{display:flex;flex-direction:column;gap:10px}
+/* Field label: mono, wide tracking, uppercase. The stamp on every group. */
+.settings-group>h3{
+  font-family:var(--font-mono);font-size:11.5px;font-weight:700;color:var(--ink-soft);
+  text-transform:uppercase;letter-spacing:.16em;
+}
+.settings-group .hint{font-size:.8rem;color:var(--ink-soft);font-weight:500;max-width:58ch;text-wrap:pretty}
+.pill-group{display:flex;flex-wrap:wrap;gap:8px}
+.pill{
+  display:inline-flex;align-items:center;min-height:44px;padding:9px 15px;
+  border:1.5px solid var(--ink);border-radius:999px;background:var(--surface);
+  color:var(--ink);font-family:var(--font-mono);font-size:11.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;box-shadow:var(--pop-sm);
+  transition:transform var(--t),box-shadow var(--t),background var(--t),color var(--t);
+}
+.pill:hover{transform:translate(-1px,-1px);box-shadow:4.5px 5.5px 0 var(--sh)}
+.pill:active{transform:translate(1.5px,1.5px);box-shadow:1px 1px 0 var(--sh)}
+/* Selected control = ink fill (same language as the tabs and the answer cards). */
+.pill[aria-pressed="true"]{background:var(--ink);color:var(--canvas)}
+.custom-count{display:none;align-items:center;gap:10px;flex-wrap:wrap}
+.custom-count.visible{display:flex}
+.custom-count input{
+  width:96px;min-height:44px;padding:10px 12px;border:1.5px solid var(--ink);border-radius:var(--r-md);
+  background:#fff;color:var(--ink);font-family:var(--font-mono);font-size:1rem;
+}
+.field-error{color:var(--no);font-size:.8rem;min-height:1.2em;font-weight:600}
+.settings-divider{border:none;border-top:1.5px dashed var(--line-strong);margin:2px 0}
+
+/* ---------- Quiz ---------- */
+.quiz-header{display:flex;flex-direction:column;gap:12px}
+.quiz-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.quiz-title{
+  font-family:var(--font-display);font-weight:400;text-transform:uppercase;
+  font-size:clamp(1.15rem,2.6vw,1.5rem);line-height:1.12;letter-spacing:-.01em;max-width:42ch;
+}
+.quiz-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.counter-label{font-family:var(--font-mono);font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
+.timer-chip{
+  display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border:1.5px solid var(--ink);
+  border-radius:999px;background:var(--surface-2);color:var(--ink);
+  font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;font-variant-numeric:tabular-nums;
+}
+.timer-chip.warning{border-color:var(--skip);background:var(--skip-soft);color:var(--skip)}
+.timer-chip.danger{border-color:var(--no);background:var(--no-soft);color:var(--no);animation:chipPulse 1s ease-in-out infinite}
+@keyframes chipPulse{50%{transform:scale(1.06)}}
+.progress-wrap{display:flex;align-items:center;gap:12px}
+.progress-track{
+  flex:1;height:14px;border:1.5px solid var(--ink);border-radius:99px;background:var(--surface);overflow:hidden;
+}
+.progress-fill{height:100%;width:0%;background:var(--brand);transition:width .35s var(--ease)}
+.progress-label{font-family:var(--font-mono);font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);white-space:nowrap}
+/* The question sits on its own sheet: the page's one elevated surface. */
+.question-text{
+  font-size:clamp(1.15rem,2.6vw,1.7rem);font-weight:700;line-height:1.4;letter-spacing:-.01em;
+  padding:clamp(18px,2.6vw,28px);border:1.5px solid var(--ink);border-radius:var(--r-lg);
+  background:var(--surface);box-shadow:var(--pop);overflow-wrap:anywhere;
+}
+.options-grid{display:grid;grid-template-columns:1fr;gap:10px}
+/* Two columns read DOWN each column, not across: A C / B D. The row count is
+   half the option count (set by renderQuestion), so a 3- or 5-option question
+   still fills two balanced columns instead of spilling into a third. Phones
+   keep the single stacked column above. */
+@media (min-width:768px){
+  .options-grid{
+    grid-template-columns:1fr 1fr;
+    grid-auto-flow:column;
+    grid-template-rows:repeat(var(--opt-rows,2),auto);
+  }
+}
+.option-btn{
+  display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:58px;
+  padding:14px 16px;border:1.5px solid var(--ink);border-radius:var(--r-md);background:var(--surface);
+  box-shadow:var(--pop-sm);font-size:clamp(.95rem,2vw,1.05rem);font-weight:600;letter-spacing:.01em;
+  transition:transform var(--t),box-shadow var(--t),background var(--t),color var(--t);
+  animation:optIn .34s var(--ease) both;animation-delay:calc(var(--i,0) * 55ms);
+}
+@keyframes optIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.option-btn:hover{transform:translate(-1px,-1px);box-shadow:4.5px 5.5px 0 var(--sh);background:var(--surface-2)}
+.option-btn:active{transform:translate(1.5px,1.5px);box-shadow:1px 1px 0 var(--sh)}
+.option-letter{
+  flex:0 0 auto;width:34px;height:34px;display:grid;place-items:center;
+  border:1.5px solid var(--ink);border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink);
+  font-family:var(--font-mono);font-size:.9rem;font-weight:700;
+  transition:background var(--t),color var(--t),border-color var(--t);
+}
+.option-text{overflow-wrap:anywhere}
+/* Picked answer = the ink card from the radio-card language: inverted surface,
+   hard shadow, and the letter chip is the one accent mark in the row. */
+.option-btn.selected{background:var(--ink);border-color:var(--ink);color:var(--surface);box-shadow:3px 4px 0 rgba(27,22,16,.3)}
+.option-btn.selected .option-letter{background:var(--brand);border-color:var(--brand-dark);color:var(--on-brand)}
+.quiz-nav{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.nav-strip{
+  position:relative;display:flex;flex-wrap:wrap;gap:7px;padding:12px;border:1.5px dashed var(--line-strong);
+  border-radius:var(--r-md);background:var(--surface-2);
+  /* Cells stay at the 44px tap-target minimum, so a long quiz would otherwise
+     grow this block without limit (100 questions on a phone is 20 rows). The
+     strip scrolls inside itself past two thirds of the screen instead. */
+  max-height:min(50vh,340px);overflow-y:auto;
+}
+/* The grid is optional furniture, so it must be able to leave the screen
+   entirely: on a phone it is the tallest block on the quiz screen. */
+.nav-strip[hidden]{display:none}
+.nav-toggle{
+  display:inline-flex;align-items:center;gap:7px;min-width:44px;min-height:44px;padding:0 12px;
+  border:1.5px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);color:var(--ink-soft);
+  font-family:var(--font-mono);font-size:11.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;
+  transition:transform var(--t),box-shadow var(--t),background var(--t),color var(--t),border-color var(--t);
+}
+.nav-toggle:hover{transform:translate(-1px,-1px);box-shadow:2.5px 3px 0 var(--sh);border-color:var(--ink);color:var(--ink)}
+.nav-toggle:active{transform:translate(1.5px,1.5px);box-shadow:1px 1px 0 var(--sh)}
+.nav-toggle[aria-expanded="true"]{background:var(--ink);border-color:var(--ink);color:var(--canvas)}
+.nav-toggle .icon{flex:0 0 auto}
+/* Icon-only on touch widths, labelled where the room exists. */
+.nav-toggle-label{display:none}
+@media (min-width:600px){.nav-toggle-label{display:inline}}
+.nav-dot{
+  width:44px;height:44px;display:grid;place-items:center;border:1.5px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--surface);color:var(--ink-soft);
+  font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+  transition:transform var(--t),background var(--t),color var(--t),border-color var(--t);
+}
+.nav-dot:hover{transform:translateY(-2px);border-color:var(--ink);color:var(--ink)}
+.nav-dot.answered{background:var(--brand);border-color:var(--brand-dark);color:var(--on-brand)}
+/* The current cell wears an inset ring, so picking a number never changes the
+   cell's size: the old outward outline (3px + 2px offset) made the chosen
+   number look a size bigger than its neighbours. */
+.nav-dot.current{border-color:var(--brand);box-shadow:inset 0 0 0 2.5px var(--brand)}
+.nav-dot.answered.current{box-shadow:inset 0 0 0 2.5px var(--on-brand)}
+.nav-dot.skipped{border-style:dashed;border-color:var(--skip);color:var(--skip)}
+.kbd-hint{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-soft);text-align:center}
+.kbd-hint kbd{
+  display:inline-block;padding:1px 6px;border:1.5px solid var(--line-strong);border-bottom-width:3px;
+  border-radius:5px;background:var(--surface);font-family:var(--font-mono);font-size:.72rem;color:var(--ink);
+}
+@media (max-width:480px){.kbd-hint{display:none}}
+/* The quiz credit: one small mono row at the very bottom of the quiz screen,
+   shown at every width while the quiz runs. On phones it is the only bottom
+   line (the kbd hint steps aside there). Fixed 11px box (line-height:1) so the
+   fit reserves below can count it exactly: 11px + one gap (10px there, 8px on
+   short screens) was added to both - 508px / - 465px. */
+.quiz-credit{font-family:var(--font-mono);font-size:11px;line-height:1;letter-spacing:.14em;color:var(--ink-soft);text-align:center}
+
+/* ---------- Question numbers: inline grid on wide screens, drawer on phones --
+   The shell is a layout no-op on desktop (display:contents keeps #navStrip
+   exactly where it has always been); the 640px block below turns the same
+   nodes into a fixed right-hand overlay. Both modes follow one source of
+   truth: the (max-width:640px) query, mirrored by QuizApp.isMobile(). */
+.nav-drawer,.nav-drawer-panel{display:contents}
+.nav-backdrop,.nav-drawer-head{display:none}
+/* The screen-entry riseIn must never re-position the fixed overlay. */
+.screen.active>.nav-drawer{animation:none}
+/* The wrapper inherited the strip's old nth-child(5) slot (delay 180ms), so on
+   desktop the entrance moves down to the strip itself: byte-identical motion
+   to when #navStrip was a direct child of the screen. */
+@media (min-width:641px){
+  .screen.active>.nav-drawer .nav-strip{animation:riseIn .45s var(--ease) 180ms both}
+}
+/* One toggle, two glyphs: the 4-square grid on desktop, the hamburger below
+   640px (swapped in the phone block). */
+.nav-icon-menu{display:none}
+
+/* ---------- Phone fit: question + answers on one screen, no page scroll ------
+   Chrome is trimmed (shell padding, topbar, card padding) and the quiz stack is
+   denser. The question box is capped against the viewport so a passage-length
+   question scrolls inside its own sheet instead of pushing the answers and the
+   nav below the fold. Nothing here drops under the 44px tap target. The number
+   grid leaves the flow entirely on a phone (it is the drawer), which is what
+   buys the room back. */
+@media (max-width:640px){
+  :root{--gap-shell:8px}
+  /* Chrome trims to 8px and yields to notches and home indicators. */
+  .app-shell{
+    padding:8px;
+    padding-top:max(8px,env(safe-area-inset-top,0px));
+    padding-right:max(8px,env(safe-area-inset-right,0px));
+    padding-bottom:max(8px,env(safe-area-inset-bottom,0px));
+    padding-left:max(8px,env(safe-area-inset-left,0px));
+  }
+  .app-card{padding:12px 12px 14px;border-radius:var(--r-lg)}
+  .topbar{min-height:44px;gap:6px;top:env(safe-area-inset-top,0px)}
+  .topbar-actions{gap:6px}
+  .brand-mark{width:38px;height:38px;border-radius:11px;font-size:1.1rem}
+  .brand-name{font-size:11.5px}
+  .screen{gap:10px}
+  body.quiz-active .app-footer{display:none}
+  /* The Home stack now carries one more action than the other screens. Its own
+     gaps pay for that, not the whole app, so the tight quiz-screen reserve
+     stays exactly as measured. The app header is already out of the picture on
+     quiz by the rule above, so nothing else from the home block has to touch
+     the quiz screen here. */
+  #screen-home{gap:8px}
+  .home-actions{gap:8px}
+  .home-input-row{gap:8px}
+  /* One row, always: title, counter, timer and the drawer toggle share it. The
+     title is the only elastic cell (ellipsis, never a wrap); the chips never
+     leave their order, toggle last so it sits at the far right edge. */
+  .quiz-header{gap:6px}
+  .quiz-title-row{flex-wrap:nowrap;align-items:center;gap:8px}
+  .quiz-title{
+    flex:1 1 auto;min-width:0;max-width:none;
+    font-size:1rem;line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .quiz-meta{flex-wrap:nowrap;gap:6px;flex:0 0 auto}
+  .quiz-meta .counter-label{order:1}
+  .quiz-meta .timer-chip{order:2}
+  .quiz-meta .nav-toggle{order:3}
+  .counter-label{font-size:.72rem}
+  .timer-chip{padding:4px 9px;font-size:.72rem}
+  .progress-wrap{gap:8px}
+  /* 14px is a desktop gauge; on a phone the bar is an 8px rule under the
+     title, and the short-screen block below drops it entirely. */
+  .progress-track{height:8px}
+  .question-text{
+    font-size:clamp(1rem,4.4vw,1.15rem);line-height:1.4;padding:10px 12px;
+    border-radius:var(--r-lg);
+    /* The reserve is everything on the quiz screen that is not the question
+       sheet: chrome above it plus the answer grid, nav row, the credit row and
+       gaps. Measured, not guessed: the worst case over 320, 375, 414 and 640
+       at 667 tall (320, where the topbar wraps) with the four-option sample,
+       plus the credit row (11px line + 10px gap). A taller question scrolls
+       inside the sheet instead of pushing the answers off screen. */
+    max-height:max(96px,calc(100dvh - 529px));
+    overflow-y:auto;overscroll-behavior:contain;
+  }
+  .options-grid{gap:6px}
+  .option-btn{min-height:46px;padding:8px 11px;gap:9px;font-size:.94rem}
+  .option-letter{width:28px;height:28px;font-size:.8rem}
+  .quiz-nav{gap:6px}
+  .quiz-nav .btn{min-height:46px;padding:9px 12px}
+  .kbd-hint{display:none}
+
+  /* ---- Question numbers become a right-hand drawer (see .nav-drawer) ------
+     An overlay, not a preference: it starts closed, never reads QS.NAVSTRIP
+     and never takes a row of its own on this screen. Visibility (not the
+     [hidden] attribute) keeps the closed drawer out of the tab order while
+     the transform still gets its 200ms slide. The global
+     prefers-reduced-motion rule collapses the transition. z-index 45 sits
+     between the topbar (40) and the modals (50). */
+  body.nav-drawer-open{overflow:hidden}
+  .nav-toggle .nav-icon-grid{display:none}
+  .nav-toggle .nav-icon-menu{display:block}
+  .nav-toggle-label{display:none}
+  .nav-drawer{
+    position:fixed;inset:0;z-index:45;display:block;
+    visibility:hidden;transition:visibility 0s linear 200ms;
+  }
+  .nav-drawer.is-open{visibility:visible;transition:visibility 0s linear 0s}
+  .nav-backdrop{
+    display:block;position:absolute;inset:0;background:var(--overlay);
+    opacity:0;pointer-events:none;transition:opacity 200ms var(--ease);
+  }
+  .nav-drawer.is-open .nav-backdrop{opacity:1;pointer-events:auto}
+  .nav-drawer-panel{
+    position:absolute;top:0;right:0;bottom:0;width:min(78vw,280px);
+    display:flex;flex-direction:column;
+    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+    background:var(--surface);border-left:1.5px solid var(--ink);
+    /* --pop-lg mirrored to the left edge: the right half would be off-screen. */
+    box-shadow:-8px 0 0 rgba(27,22,16,.3);
+    transform:translateX(100%);transition:transform 200ms var(--ease);
+  }
+  .nav-drawer.is-open .nav-drawer-panel{transform:translateX(0)}
+  .nav-drawer-head{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:8px 8px 8px 12px;border-bottom:1.5px solid var(--ink);
+    background:var(--surface-2);
+  }
+  .nav-drawer-title{
+    font-family:var(--font-mono);font-size:11.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.14em;
+  }
+  .nav-drawer .nav-strip{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));
+    /* The strip is stretched to the panel height (flex:1), so the rows must
+       pack at the top. The default stretch turned the 6px row gap into 55px
+       and scattered the pad over the drawer. */
+    align-content:start;
+    gap:6px;padding:10px;border:none;border-radius:0;background:transparent;
+    max-height:none;min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;
+  }
+  .nav-drawer .nav-dot{width:auto;height:44px;justify-self:stretch}
+  /* Reduced motion: no slide and, unlike the global duration override, no
+     lingering visibility delay either (the shorthand resets the delay). */
+  @media (prefers-reduced-motion:reduce){
+    .nav-drawer,.nav-drawer-panel,.nav-backdrop{transition:none !important}
+  }
+}
+@media (max-width:420px){
+  /* Two 44px controls side by side at 320px need the tightest label treatment
+     that still keeps both words intact. */
+  .quiz-nav .btn{padding:10px 8px;gap:6px;font-size:.85rem}
+}
+/* Shorter phones get one more notch. The progress track repeats the "3 / 20"
+   counter printed right above it, so on a 640px-tall screen it is the first
+   thing to give up its row: the number stays, the bar goes. */
+@media (max-width:640px) and (max-height:640px){
+  .screen{gap:8px}
+  .progress-wrap{display:none}
+  .quiz-header{gap:0}
+  .quiz-title{font-size:.95rem}
+  .question-text{
+    padding:10px 12px;font-size:1rem;border-radius:var(--r-lg);
+    /* Same method as the block above, measured over the same four widths on
+       short screens: the worst case was 320x568, plus the credit row (11px
+       line + 8px gap). */
+    max-height:max(64px,calc(100dvh - 484px));
+  }
+  .option-btn{min-height:44px;padding:7px 10px;font-size:.92rem}
+  .option-letter{width:26px;height:26px;font-size:.78rem}
+  .quiz-nav .btn{min-height:44px}
+}
+
+/* ---------- Result: a graded sheet, not a dashboard ---------- */
+/* Result is a single graded card, centered like a sheet on the canvas, not a
+   left-edged dashboard column. The score circle and the copy column share the
+   same row, and both share the screen's center axis. */
+.result-screen-inner{display:flex;align-items:center;gap:clamp(22px,4vw,36px);justify-content:center}
+.result-copy{align-self:center;text-align:center;max-width:min(68ch,86%)}
+.result-copy .screen-title{text-align:center}
+.result-copy .result-message{display:block;margin:0 auto;text-align:center}
+@media (max-width:639px){
+  .result-head{display:flex;flex-direction:column;gap:clamp(18px,3vw,26px);align-items:center;justify-content:center;min-height:0}
+  .result-copy{align-self:center;text-align:center;margin-top:clamp(6px,1.4vw,12px)}
+}
+@media (min-width:640px){
+  .result-head{display:flex;flex-direction:row;align-items:center;gap:26px;justify-content:center}
+  .score-circle{display:grid}
+  .result-copy{align-self:center;text-align:center;max-width:min(68ch,78%)}
+}
+.score-circle{
+  --score-pct:0;
+  width:clamp(148px,34vw,178px);aspect-ratio:1;flex:0 0 auto;position:relative;
+  display:grid;place-items:center;border:1.5px solid var(--ink);border-radius:50%;
+  box-shadow:var(--pop);
+  background:conic-gradient(var(--score-color,var(--brand)) calc(var(--score-pct) * 1%),var(--surface-2) 0);
+}
+.score-circle::before{content:"";position:absolute;inset:13px;border:1.5px solid var(--line);border-radius:50%;background:var(--surface)}
+.score-circle>*{position:relative;text-align:center}
+.score-pct{font-family:var(--font-mono);font-size:clamp(1.75rem,5vw,2.25rem);font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+.score-fraction{font-family:var(--font-mono);font-size:.82rem;color:var(--ink-soft)}
+.result-copy{display:flex;flex-direction:column;gap:14px}
+/* The graded stamp: the one piece of personality on this screen. */
+.result-message{
+  align-self:flex-start;transform:rotate(-2.5deg);padding:7px 16px;
+  border:1.5px dashed var(--score-color,var(--brand));border-radius:999px;
+  color:var(--score-color,var(--brand));background:var(--surface);
+  font-family:var(--font-mono);font-weight:700;font-size:.86rem;
+  text-transform:uppercase;letter-spacing:.1em;
+}
+.result-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);border:1.5px solid var(--ink);
+  border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--pop-sm);background:var(--surface);
+}
+.stat-box{display:flex;flex-direction:column;align-items:center;gap:3px;padding:15px 6px;background:var(--surface)}
+.stat-box+.stat-box{border-left:1.5px dashed var(--line)}
+.stat-num{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums}
+.stat-label{
+  font-family:var(--font-mono);font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--ink-soft);text-align:center;
+}
+.stat-correct .stat-num{color:var(--ok)}
+.stat-wrong .stat-num{color:var(--no)}
+.stat-skipped .stat-num{color:var(--skip)}
+
+/* ---------- Modals (z-index scale: 50 modals, 80 toast) ---------- */
+.modal-overlay{
+  position:fixed;inset:0;z-index:50;display:none;place-items:center;
+  padding:clamp(10px,3vw,28px);background:var(--overlay);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.modal-overlay.open{display:grid}
+.modal{
+  width:100%;max-width:600px;max-height:90svh;max-height:90dvh;overflow:auto;
+  background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--r-lg);
+  box-shadow:var(--pop-lg);padding:clamp(18px,3vw,30px);
+  display:flex;flex-direction:column;gap:16px;animation:modalIn .3s cubic-bezier(.2,.8,.3,1.2);
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.modal-wide{max-width:720px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.modal-head h2{
+  display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:400;
+  font-size:1.375rem;line-height:1.15;text-transform:uppercase;letter-spacing:-.01em;
+}
+.modal-close{
+  width:44px;height:44px;flex:0 0 auto;display:grid;place-items:center;
+  border:1.5px solid var(--ink);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink);
+  transition:transform var(--t),background var(--t),color var(--t);
+}
+.modal-close:hover{background:var(--no);color:var(--surface)}
+.modal-close:active{transform:translate(2px,2px)}
+.modal-sub{font-size:.86rem;color:var(--ink-soft)}
+/* Import modal */
+/* Segmented control: cells share the rule, pressed cell is the ink fill.
+   flex:0 0 auto is load-bearing: .tabs has overflow:hidden, which zeroes its
+   automatic minimum size as a flex child of .modal (max-height:90dvh). On a
+   short phone the modal's overflowing content used to crush this strip down to
+   its 3px borders, hiding the tabs and making them unclickable. */
+.tabs{display:flex;flex:0 0 auto;gap:0;border:1.5px solid var(--ink);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.tabs button{
+  flex:1;min-height:44px;padding:9px 10px;border-radius:0;
+  font-family:var(--font-mono);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--ink-soft);transition:background var(--t),color var(--t);
+}
+.tabs button+button{border-left:1.5px solid var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--canvas)}
+.tab-panel{display:none;flex-direction:column;gap:12px}
+.tab-panel.active{display:flex}
+.dropzone{
+  display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 16px;text-align:center;
+  border:1.5px dashed var(--line-strong);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);
+  cursor:pointer;font-size:.9rem;transition:border-color var(--t),background var(--t),color var(--t);
+}
+.dropzone:hover,.dropzone.dragover{border-color:var(--brand);background:var(--brand-soft);color:var(--ink)}
+.dropzone .icon{width:30px;height:30px;color:var(--brand)}
+.dropzone .dz-hint{font-size:.74rem;max-width:40ch}
+.text-input{
+  width:100%;padding:13px 15px;border:1.5px solid var(--ink);border-radius:var(--r-md);
+  /* Themed field surface: hardcoded #fff left dark mode with cream text on      white. --surface flips in dark, --ink already follows. */
+  background:var(--surface);color:var(--ink);font-family:inherit;font-size:16px;
+}
+.text-input::placeholder{color:var(--ink-soft)}
+.code-block{
+  border:1.5px solid var(--ink);border-radius:var(--r-md);overflow:auto;white-space:pre;
+  max-height:220px;padding:14px;background:var(--ink);color:var(--canvas);
+  font-family:var(--font-mono);font-size:.78rem;line-height:1.65;
+}
+.copy-row{display:flex;justify-content:flex-end}
+.copy-row .btn{min-height:44px;padding:8px 16px;font-size:.84rem}
+/* Error modal */
+.error-list{list-style:none;display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto}
+.error-item{
+  display:flex;gap:10px;padding:11px 13px;font-size:.85rem;border-radius:var(--r-sm);
+  border:1.5px solid var(--no);background:var(--no-soft);color:var(--ink);
+}
+.error-item .err-tag{
+  flex:0 0 auto;height:fit-content;padding:2px 9px;border-radius:999px;
+  font-family:var(--font-mono);font-size:.68rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--surface);background:var(--no);
+}
+.error-item.err-warning{border-color:var(--skip);background:var(--skip-soft)}
+.error-item.err-warning .err-tag{background:var(--skip)}
+/* Review modal */
+/* The review card is the one modal that is always taller than any screen, so
+   its native bar is suppressed. The card still scrolls normally (wheel, keys,
+   touch); what replaces the bar is the head, which sticks so the title and the
+   close button stay reachable at every scroll position. */
+#modalReview .modal{padding-top:0;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+#modalReview .modal::-webkit-scrollbar{width:0;height:0}
+#modalReview .modal-head{
+  position:sticky;top:0;z-index:2;background:var(--surface);
+  padding:clamp(18px,3vw,30px) 0 14px;
+}
+.review-list{display:flex;flex-direction:column;gap:12px}
+.review-item{border:1.5px solid var(--ink);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.review-q{display:flex;gap:10px;padding:12px 14px;background:var(--surface-2);font-weight:700;font-size:.92rem}
+.review-q .rv-num{
+  flex:0 0 auto;width:26px;height:26px;display:grid;place-items:center;border-radius:var(--r-sm);
+  font-family:var(--font-mono);font-size:.75rem;font-weight:700;background:var(--ink-soft);color:var(--surface);
+}
+.review-item.rv-correct .rv-num{background:var(--ok);color:var(--surface)}
+.review-item.rv-wrong .rv-num{background:var(--no);color:var(--surface)}
+.review-item.rv-skipped .rv-num{background:var(--skip);color:var(--surface)}
+.review-body{display:flex;flex-direction:column;gap:7px;padding:12px 14px;font-size:.86rem}
+.review-body .rv-line{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.review-body .rv-opt{padding:5px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);overflow-wrap:anywhere}
+.review-body .rv-opt.rv-opt-correct{border-color:var(--ok);background:var(--ok-soft);color:var(--ink);font-weight:700}
+.review-body .rv-opt.rv-opt-wrong{border-color:var(--no);background:var(--no-soft);color:var(--ink);font-weight:700}
+.review-body .rv-note{font-size:.78rem;color:var(--ink-soft)}
+/* Loading: skeleton shaped like the layout it replaces (no bare spinner) */
+.loading-modal{align-items:flex-start;text-align:left}
+.skeleton{display:flex;flex-direction:column;gap:10px;width:100%}
+.sk-bar{
+  height:14px;border-radius:8px;
+  background:linear-gradient(90deg,var(--surface-2),var(--line),var(--surface-2));
+  background-size:220% 100%;animation:shimmer 1.5s linear infinite;
+}
+.sk-bar.w-70{width:70%}
+.sk-bar.w-45{width:45%}
+.sk-panel{height:96px;border:1.5px dashed var(--line-strong);border-radius:var(--r-md)}
+.sk-option{height:52px;border:1.5px dashed var(--line-strong);border-radius:var(--r-md)}
+@keyframes shimmer{from{background-position:120% 0}to{background-position:-120% 0}}
+/* Toast */
+/* Toast: a dark card stamped in from the bottom-right, with a status disc. */
+.toast{
+  position:fixed;right:22px;bottom:22px;z-index:80;
+  max-width:min(400px,calc(100vw - 44px));
+  display:flex;gap:13px;align-items:flex-start;text-align:left;
+  transform:translateX(30px);opacity:0;visibility:hidden;pointer-events:none;
+  padding:15px 18px;border:1.5px solid var(--ink);border-radius:13px;
+  background:var(--ink);color:var(--canvas);box-shadow:5px 6px 0 rgba(27,22,16,.3);
+  font-size:13px;line-height:1.45;
+  transition:transform .35s cubic-bezier(.2,.9,.3,1.2),opacity .35s,visibility .35s;
+}
+.toast::before{
+  content:"";width:26px;height:26px;flex:0 0 auto;margin-top:1px;border-radius:50%;
+  background:var(--canvas);border:1.5px solid var(--canvas);
+}
+.toast.show{transform:translateX(0);opacity:1;visibility:visible}
+.toast.toast-error::before{background:var(--no);border-color:var(--no)}
+.toast.toast-success::before{background:var(--brand);border-color:var(--brand-dark)}
+
+/* ---------- Teacher: AI generator ---------- */
+.gen-form{gap:16px}
+.gen-result{display:flex;flex-direction:column;gap:12px;padding:16px;border:1.5px solid var(--ink);border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--pop-sm)}
+.gen-code{font-family:var(--font-mono);font-weight:700;font-size:clamp(1.75rem,8vw,2.5rem);letter-spacing:.18em;text-align:center;user-select:all;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<!-- ====================== APP SHELL ====================== -->
+<div class="app-shell">
+ <div class="shell-inner">
+  <!-- Icons: Tabler Icons (MIT, https://tabler.io/icons), paths vendored inline so
+       the app stays single-file and offline-capable. Stroke width standardised. -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">B</div>
+      <span class="brand-name">Quiz Master</span>
+    </div>
+    <div class="topbar-actions">
+      <div class="lang-toggle" role="group" data-i18n-title="a11y.langToggle" id="langToggle">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="id" aria-pressed="false">ID</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-card">
+
+    <!-- ============ SCREEN: ROLE (landing) ============ -->
+    <!-- The first screen: pick a role. Teacher opens the question room
+         (ChatGPT wizard link + loader); Student goes to the quiz home. -->
+    <section class="screen active" id="screen-role" aria-labelledby="roleHeading">
+      <div class="home-header">
+        <h1 class="home-title" id="roleHeading" data-i18n="home.title">Quiz Master</h1>
+        <p class="home-sub" data-i18n="role.subtitle">Pilih peran untuk mulai.</p>
+      </div>
+      <div class="role-actions">
+        <button type="button" class="role-btn" id="btnRoleGuru">
+          <span class="role-chip role-chip-teacher" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 9l-10 -4l-10 4l10 4l10 -4v6"/><path d="M6 10.6v5.4a6 3 0 0 0 12 0v-5.4"/></svg>
+          </span>
+          <span class="role-copy">
+            <span class="role-name" data-i18n="role.teacher">Guru</span>
+            <span class="role-hint" data-i18n="role.teacherHint">Buat soal dengan ChatGPT, lalu muat soalnya di sini.</span>
+          </span>
+          <svg class="icon role-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>
+        </button>
+        <button type="button" class="role-btn" id="btnRoleSiswa">
+          <span class="role-chip role-chip-student" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+          </span>
+          <span class="role-copy">
+            <span class="role-name" data-i18n="role.student">Siswa</span>
+            <span class="role-hint" data-i18n="role.studentHint">Kerjakan soal: contoh, kode, atau link.</span>
+          </span>
+          <svg class="icon role-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: HOME (student) ============ -->
+    <section class="screen" id="screen-home" aria-labelledby="homeHeading">
+      <div class="home-head-row">
+        <div class="home-header">
+          <h1 class="home-title" id="homeHeading" data-i18n="home.title">Quiz Master</h1>
+          <p class="home-sub" data-i18n="home.subtitle">Berlatih soal pilihan ganda dengan hasil instan, tanpa akun dan tanpa server.</p>
+        </div>
+        <button type="button" class="modal-close" id="btnHomeBack" data-i18n-title="a11y.back" data-i18n-attr="aria-label:a11y.back" aria-label="Back">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="home-actions">
+        <button type="button" class="btn btn-primary btn-block btn-start" id="btnStartSample">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13 -8z"/></svg>
+          <span data-i18n="home.startSample">Mulai Kuis Contoh</span>
+        </button>
+        <div class="home-input-row">
+          <button type="button" class="btn btn-secondary btn-block" id="btnInputTxt">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M14 4l-4 16"/></svg>
+            <span data-i18n="home.inputCode">input kode</span>
+          </button>
+        </div>
+        <button type="button" class="btn btn-ghost btn-block" id="btnCopyTemplate">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+          <span data-i18n="home.copyTemplate">Salin template</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-block" id="btnOpenSettings">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+          <span data-i18n="home.settings">Settings</span>
+        </button>
+      </div>
+      <div class="last-quiz" id="lastQuizBox">
+        <span class="lq-info">
+          <span class="lq-label" data-i18n-html="home.continueLast">Lanjutkan kuis terakhir</span>
+          <span class="lq-meta" id="lastQuizMeta"></span>
+        </span>
+        <button type="button" class="btn btn-secondary lq-btn" id="btnContinueLast" data-i18n="home.continue">Lanjutkan</button>
+      </div>
+      <p class="privacy-note">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg>
+        <span data-i18n="home.privacy">Jawaban dan pengaturanmu tidak pernah dikirim ke mana pun. Soal dari sebuah link dibaca langsung dari situsnya; kalau situs itu memblokir browser, fungsi serverless kecil atau proxy CORS publik yang mengambil file itu.</span>
+      </p>
+    </section>
+
+    <!-- ============ SCREEN: TEACHER (Guru) ============ -->
+    <!-- The question room: one accent action (the ChatGPT wizard link) and the
+         same import modal the student home uses. The link href is built in JS
+         from the prompt constant, so no 15KB URL lives in the markup. -->
+    <section class="screen" id="screen-teacher" aria-labelledby="teacherHeading">
+      <div class="settings-head">
+        <h2 class="screen-title" id="teacherHeading" data-i18n="teacher.title">Guru</h2>
+        <button type="button" class="modal-close" id="btnTeacherBack" data-i18n-title="a11y.back" data-i18n-attr="aria-label:a11y.back" aria-label="Back">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="settings-group gen-form" id="genForm">
+        <h3 data-i18n="gen.title">Buat soal dengan AI</h3>
+        <div class="settings-group">
+          <h3 data-i18n="gen.topic">Topik</h3>
+          <input type="text" class="text-input" id="genTopic" maxlength="200" autocomplete="off" data-i18n-placeholder="gen.topicPh" aria-label="Topic">
+        </div>
+        <div class="settings-group">
+          <h3 data-i18n="gen.grade">Jenjang / kelas</h3>
+          <input type="text" class="text-input" id="genGrade" maxlength="40" autocomplete="off" data-i18n-placeholder="gen.gradePh" aria-label="Grade">
+        </div>
+      <div class="settings-group">
+        <h3 data-i18n="gen.lang"></h3>
+        <div class="pill-group" id="grpGenLang" role="group"><button type="button" class="pill" data-value="en" aria-pressed="false">EN</button><button type="button" class="pill" data-value="id" aria-pressed="false">ID</button></div>
+      </div>
+      <div class="settings-group">
+        <h3 data-i18n="settings.count"></h3>
+        <div class="pill-group" id="grpGenCount" role="group"><button type="button" class="pill" data-value="5" aria-pressed="false">5</button><button type="button" class="pill" data-value="10" aria-pressed="false">10</button><button type="button" class="pill" data-value="15" aria-pressed="false">15</button><button type="button" class="pill" data-value="20" aria-pressed="false">20</button></div>
+      </div>
+      <div class="settings-group">
+        <h3 data-i18n="gen.level"></h3>
+        <div class="pill-group" id="grpGenLevel" role="group"><button type="button" class="pill" data-value="mudah" aria-pressed="false" data-i18n="gen.easy">Mudah</button><button type="button" class="pill" data-value="sedang" aria-pressed="false" data-i18n="gen.medium">Sedang</button><button type="button" class="pill" data-value="sulit" aria-pressed="false" data-i18n="gen.hard">Sulit</button></div>
+      </div>
+        <p class="hint" data-i18n="gen.privacy"></p>
+        <button type="button" class="btn btn-primary btn-block" id="btnGenerate">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13 -8z"/></svg>
+          <span data-i18n="gen.submit">Buat &amp; dapatkan kode</span>
+        </button>
+        <p class="field-error" id="genError" role="alert"></p>
+        <div class="gen-result" id="genResult" hidden>
+          <span class="lq-label" data-i18n="gen.codeLabel">Kode kuis kamu</span>
+          <div class="gen-code" id="genCode"></div>
+          <div class="btn-row">
+            <button type="button" class="btn btn-secondary btn-block" id="btnGenCopyCode"><span data-i18n="gen.copyCode">Salin kode</span></button>
+            <button type="button" class="btn btn-secondary btn-block" id="btnGenCopyLink"><span data-i18n="gen.copyLink">Salin link</span></button>
+            <button type="button" class="btn btn-primary btn-block" id="btnGenTry"><span data-i18n="gen.try">Coba kuis</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="teacher-generate">
+        <a class="btn btn-primary btn-block" id="btnBuatSoal" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6"/><path d="M11 13l9 -9"/><path d="M15 4h5v5"/></svg>
+          <span data-i18n="teacher.buatSoal">Buat Soal</span>
+        </a>
+        <p class="teacher-hint" data-i18n="teacher.buatSoalHint">Membuka ChatGPT di tab baru dengan prompt wizard siap pakai. Setelah soal selesai, salin hasilnya ke file .txt, link raw, atau kode Pastebin, lalu muat di bawah.</p>
+      </div>
+
+      <div class="settings-group">
+        <h3 data-i18n="teacher.loadTitle">Muat soal</h3>
+        <div class="home-actions">
+          <div class="home-input-row">
+            <button type="button" class="btn btn-secondary btn-block" id="btnTeacherCode">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M14 4l-4 16"/></svg>
+              <span data-i18n="home.inputCode">input kode</span>
+            </button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-block" id="btnTeacherLoad">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg>
+            <span data-i18n="home.loadQuiz">Load Kuis (.txt / URL)</span>
+          </button>
+          <button type="button" class="btn btn-ghost btn-block" id="btnTeacherTemplate">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+            <span data-i18n="home.copyTemplate">Salin template</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: SETTINGS ============ -->
+    <section class="screen" id="screen-settings" aria-labelledby="settingsHeading">
+      <div class="settings-head">
+        <h2 class="screen-title" id="settingsHeading" data-i18n="settings.title">Settings</h2>
+        <button type="button" class="modal-close" id="btnSettingsBack" data-i18n-title="a11y.close" aria-label="Close">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="settings-group">
+        <h3 data-i18n="settings.count">Jumlah soal</h3>
+        <div class="pill-group" id="grpCount" role="group" data-i18n-title="settings.count">
+          <button type="button" class="pill" data-value="all" aria-pressed="false" data-i18n="settings.all">Semua</button>
+          <button type="button" class="pill" data-value="5" aria-pressed="false">5</button>
+          <button type="button" class="pill" data-value="10" aria-pressed="false">10</button>
+          <button type="button" class="pill" data-value="20" aria-pressed="true">20</button>
+          <button type="button" class="pill" data-value="custom" aria-pressed="false" data-i18n="settings.custom">Kustom</button>
+        </div>
+        <div class="custom-count" id="customCountWrap">
+          <input type="number" id="customCount" min="1" max="200" inputmode="numeric" value="10" data-i18n-title="settings.customHint">
+          <span class="field-error" id="customCountError" role="alert"></span>
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <div class="settings-group">
+        <h3 data-i18n="settings.qOrder">Urutan soal</h3>
+        <div class="pill-group" id="grpQOrder" role="group">
+          <button type="button" class="pill" data-value="random" aria-pressed="true" data-i18n="settings.random">Acak</button>
+          <button type="button" class="pill" data-value="original" aria-pressed="false" data-i18n="settings.original">Sesuai urutan</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <h3 data-i18n="settings.oOrder">Urutan opsi jawaban</h3>
+        <div class="pill-group" id="grpOOrder" role="group">
+          <button type="button" class="pill" data-value="random" aria-pressed="true" data-i18n="settings.random">Acak</button>
+          <button type="button" class="pill" data-value="original" aria-pressed="false" data-i18n="settings.original">Sesuai urutan</button>
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <div class="settings-group">
+        <h3 data-i18n="settings.timer">Timer per soal</h3>
+        <div class="pill-group" id="grpTimer" role="group">
+          <button type="button" class="pill" data-value="0" aria-pressed="true" data-i18n="settings.off">Mati</button>
+          <button type="button" class="pill" data-value="10" aria-pressed="false">10s</button>
+          <button type="button" class="pill" data-value="20" aria-pressed="false">20s</button>
+          <button type="button" class="pill" data-value="30" aria-pressed="false">30s</button>
+          <button type="button" class="pill" data-value="60" aria-pressed="false">60s</button>
+        </div>
+        <p class="hint" data-i18n="settings.timerHint">Jika waktu habis, soal dilewati otomatis.</p>
+      </div>
+
+      <div class="settings-group">
+        <h3 data-i18n="settings.showAnswers">Tampilkan kunci setelah selesai</h3>
+        <div class="pill-group" id="grpShowAnswers" role="group">
+          <button type="button" class="pill" data-value="yes" aria-pressed="true" data-i18n="settings.yes">Ya</button>
+          <button type="button" class="pill" data-value="no" aria-pressed="false" data-i18n="settings.no">Tidak</button>
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <div class="settings-group">
+        <h3 data-i18n="settings.theme">Tampilan</h3>
+        <div class="pill-group" id="grpTheme" role="group">
+          <button type="button" class="pill" data-value="auto" aria-pressed="true" data-i18n="settings.themeAuto">Ikuti sistem</button>
+          <button type="button" class="pill" data-value="light" aria-pressed="false" data-i18n="settings.themeLight">Terang</button>
+          <button type="button" class="pill" data-value="dark" aria-pressed="false" data-i18n="settings.themeDark">Gelap</button>
+        </div>
+        <p class="hint" data-i18n="settings.themeHint">Terang dan gelap punya kontras penuh, jadi pilih yang paling nyaman di matamu.</p>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-block" id="btnSaveSettings" data-i18n="settings.save">Simpan</button>
+        <button type="button" class="btn btn-secondary btn-block" id="btnResetSettings" data-i18n="settings.reset">Reset default</button>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: QUIZ ============ -->
+    <section class="screen" id="screen-quiz" aria-labelledby="quizTitle">
+      <div class="quiz-header">
+        <div class="quiz-title-row">
+          <h2 class="quiz-title" id="quizTitle">Quiz</h2>
+          <div class="quiz-meta">
+            <button type="button" class="nav-toggle" id="btnNavToggle" aria-expanded="true" aria-controls="navStrip">
+              <svg class="icon icon-sm nav-icon-grid" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M14 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M4 14m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M14 14m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/></svg>
+              <svg class="icon icon-sm nav-icon-menu" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
+              <span class="nav-toggle-label" data-i18n="quiz.navNumbers">Question numbers</span>
+            </button>
+            <span class="timer-chip" id="timerChip" hidden>
+              <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
+              <span id="timerValue">0:30</span>
+            </span>
+            <span class="counter-label" id="counterLabel">1 / 20</span>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-track" id="progressBar" role="progressbar" aria-label="Quiz progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="1">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span class="progress-label" id="progressLabel">1/10</span>
+        </div>
+      </div>
+
+      <div class="question-text" id="questionText" dir="auto">Question text</div>
+
+      <div class="options-grid" id="optionsGrid" role="group" data-i18n-attr="aria-label:a11y.options">Answer options</div>
+
+      <div class="quiz-nav">
+        <button type="button" class="btn btn-secondary" id="btnPrev">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+          <span data-i18n="quiz.prev">Sebelumnya</span>
+        </button>
+        <button type="button" class="btn btn-primary" id="btnNext">
+          <span id="btnNextLabel" data-i18n="quiz.next">Lanjut</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>
+        </button>
+      </div>
+
+      <!-- One node for both layouts: an inline grid under the nav on desktop, a
+           fixed right-hand drawer on phones. The CSS picks which (see
+           .nav-drawer); the JS only ever flips .is-open / [hidden]. -->
+      <div class="nav-drawer" id="navDrawer">
+        <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
+        <div class="nav-drawer-panel">
+          <div class="nav-drawer-head">
+            <span class="nav-drawer-title" data-i18n="quiz.navNumbers">Question numbers</span>
+            <button type="button" class="modal-close" id="btnNavClose" data-i18n-title="a11y.close" data-i18n-attr="aria-label:a11y.close" aria-label="Close">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="nav-strip" id="navStrip" role="group" data-i18n-attr="aria-label:a11y.navStrip" aria-label="Question navigation"></div>
+        </div>
+      </div>
+
+      <p class="kbd-hint" data-i18n="quiz.kbdHint">Keyboard: 1-4 pilih, Enter lanjut, panah kiri dan kanan untuk pindah soal</p>
+      <p class="quiz-credit">made by suuf24</p>
+    </section>
+
+    <!-- ============ SCREEN: RESULT ============ -->
+    <section class="screen" id="screen-result" aria-labelledby="resultHeading">
+      <div class="result-head">
+        <div class="score-circle" id="scoreCircle" role="img" data-i18n-attr="aria-label:result.ariaScore">
+          <div>
+            <div class="score-pct" id="scorePct">0%</div>
+            <div class="score-fraction" id="scoreFraction">0/0</div>
+          </div>
+        </div>
+        <div class="result-copy">
+          <h2 class="screen-title" id="resultHeading" data-i18n="result.title">Hasil Kamu</h2>
+          <p class="result-message" id="resultMessage"></p>
+        </div>
+      </div>
+
+      <div class="result-stats">
+        <div class="stat-box stat-correct">
+          <span class="stat-num">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg>
+            <span id="statCorrect">0</span>
+          </span>
+          <span class="stat-label" data-i18n="result.correct">Benar</span>
+        </div>
+        <div class="stat-box stat-wrong">
+          <span class="stat-num">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M10 10l4 4m0 -4l-4 4"/></svg>
+            <span id="statWrong">0</span>
+          </span>
+          <span class="stat-label" data-i18n="result.wrong">Salah</span>
+        </div>
+        <div class="stat-box stat-skipped">
+          <span class="stat-num">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14 0"/></svg>
+            <span id="statSkipped">0</span>
+          </span>
+          <span class="stat-label" data-i18n="result.skipped">Lewati</span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary btn-block" id="btnReview">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg>
+          <span data-i18n="result.review">Review Jawaban</span>
+        </button>
+        <button type="button" class="btn btn-primary btn-block" id="btnPlayAgain">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+          <span data-i18n="result.playAgain">Main Lagi</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-block" id="btnLoadAnother">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg>
+          <span data-i18n="home.loadQuiz">Load Kuis (.txt / URL)</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ====================== FOOTER ====================== -->
+  <footer class="app-footer">
+    <div class="social-row">
+      <a href="https://www.instagram.com/suuf24/" target="_blank" rel="noopener noreferrer" class="social-icon social-instagram" title="Instagram" aria-label="Instagram">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      </a>
+      <a href="https://github.com/suuf24" target="_blank" rel="noopener noreferrer" class="social-icon social-github" title="GitHub" aria-label="GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+      <a href="https://wa.me/6285103974297" target="_blank" rel="noopener noreferrer" class="social-icon social-whatsapp" title="WhatsApp" aria-label="WhatsApp">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+      </a>
+    </div>
+    <p class="footer-copy">
+      <span>© Quiz Master</span>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/></svg>
+      <span data-i18n="footer.made">Dibuat dengan hati</span>
+    </p>
+  </footer>
+ </div>
+</div>
+
+<!-- ====================== MODAL: IMPORT ====================== -->
+<div class="modal-overlay" id="modalImport" role="dialog" aria-modal="true" aria-labelledby="importHeading">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="importHeading" data-i18n="import.title">Load Kuis</h2>
+      <button type="button" class="modal-close" data-close-modal data-i18n-title="a11y.close" aria-label="Close">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tabFile" aria-selected="false" aria-controls="panelFile" data-i18n="import.tabFile">File</button>
+      <button type="button" role="tab" id="tabUrl" aria-selected="false" aria-controls="panelUrl" data-i18n="import.tabUrl">URL</button>
+      <button type="button" role="tab" id="tabCode" aria-selected="true" aria-controls="panelCode" data-i18n="import.tabCode">Code</button>
+    </div>
+
+    <div class="tab-panel" id="panelFile" role="tabpanel" aria-labelledby="tabFile">
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" data-i18n-attr="aria-label:import.dropzoneAria" aria-label="Choose or drop a TXT file">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg>
+        <span data-i18n="import.dropzone">Klik atau tarik file .txt ke sini</span>
+        <span class="dz-hint" data-i18n="import.dropzoneHint">Hanya dibaca di perangkatmu, tidak pernah diunggah.</span>
+      </div>
+      <input type="file" id="fileInput" accept=".txt,.text,text/plain" hidden>
+    </div>
+
+    <div class="tab-panel" id="panelUrl" role="tabpanel" aria-labelledby="tabUrl">
+      <label class="sr-only" for="urlInput" data-i18n="import.urlLabel">URL raw text</label>
+      <input type="url" class="text-input" id="urlInput" placeholder="https://pastebin.com/raw/xxxx" data-i18n-placeholder="import.urlPlaceholder">
+      <p class="hint" data-i18n="import.urlHint">Gunakan link raw text: Pastebin Raw, GitHub raw, atau Gist raw.</p>
+      <button type="button" class="btn btn-primary btn-block" id="btnLoadUrl">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>
+        <span data-i18n="import.loadUrl">Load dari URL</span>
+      </button>
+    </div>
+
+    <div class="tab-panel active" id="panelCode" role="tabpanel" aria-labelledby="tabCode">
+      <label class="sr-only" for="codeInput" data-i18n="import.codeLabel">Kode Pastebin</label>
+      <input type="text" class="text-input" id="codeInput" placeholder="Tnk390bz" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-placeholder="import.codePlaceholder">
+      <p class="hint" data-i18n="import.codeHint">Tempel link raw atau kodenya saja: pastebin.com/raw/Tnk390bz = Tnk390bz</p>
+      <button type="button" class="btn btn-primary btn-block" id="btnLoadCode">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M14 4l-4 16"/></svg>
+        <span data-i18n="import.loadCode">Muat kode</span>
+      </button>
+    </div>
+
+    <div>
+      <p class="hint" data-i18n="import.formatTitle">Format TXT yang didukung:</p>
+      <pre class="code-block" id="formatExample"></pre>
+      <p class="hint" data-i18n="import.formatNote">Satu soal satu baris, dipisah |. Tandai opsi benar dengan *. Format lama per blok tetap bisa dimuat.</p>
+      <div class="copy-row">
+        <button type="button" class="btn btn-secondary" id="btnCopyExample" data-i18n="import.copyExample">Copy contoh</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: ERROR ====================== -->
+<div class="modal-overlay" id="modalError" role="dialog" aria-modal="true" aria-labelledby="errorHeading">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="errorHeading">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+        <span data-i18n="error.title">Soal Bermasalah</span>
+      </h2>
+      <button type="button" class="modal-close" data-close-modal data-i18n-title="a11y.close" aria-label="Close">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="modal-sub" id="errorSummary"></p>
+    <ul class="error-list" id="errorList"></ul>
+    <div class="btn-row">
+      <button type="button" class="btn btn-secondary btn-block" id="btnErrorRetry" data-i18n="error.tryAgain">Coba Lagi</button>
+      <button type="button" class="btn btn-ghost btn-block" id="btnErrorLoadTxt" data-i18n="error.loadTxt">Load TXT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: REVIEW ====================== -->
+<div class="modal-overlay" id="modalReview" role="dialog" aria-modal="true" aria-labelledby="reviewHeading">
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <h2 id="reviewHeading" data-i18n="review.title">Detail Jawaban</h2>
+      <button type="button" class="modal-close" data-close-modal data-i18n-title="a11y.close" aria-label="Close">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="modal-sub" data-i18n="review.order">Soal yang salah dijawab ditampilkan lebih dulu.</p>
+    <div class="review-list" id="reviewList"></div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: LOADING ====================== -->
+<div class="modal-overlay" id="modalLoading" role="dialog" aria-modal="true" aria-labelledby="loadingHeading">
+  <div class="modal loading-modal">
+    <h2 id="loadingHeading" data-i18n="loading.title">Memuat…</h2>
+    <p class="modal-sub" id="loadingSub" data-i18n="loading.sub">Mengambil data kuis</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="sk-bar w-70"></div>
+      <div class="sk-bar w-45"></div>
+      <div class="sk-panel"></div>
+      <div class="sk-option"></div>
+      <div class="sk-option"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+(function () {
+  /* ============================================================
+   * QuizStorage - localStorage opsional, selalu try/catch
+   * ============================================================ */
+  var QS = {
+    LANG: 'qm_lang',
+    SETTINGS: 'qm_settings_v1',
+    LAST: 'qm_last_quiz_v1',
+    NAVSTRIP: 'qm_navstrip'
+  };
+  var QuizStorage = {
+    get: function (key, fallback) {
+      try {
+        var v = window.localStorage.getItem(key);
+        return v === null ? fallback : v;
+      } catch (e) { return fallback; }
+    },
+    set: function (key, value) {
+      try { window.localStorage.setItem(key, String(value)); return true; }
+      catch (e) { return false; }
+    },
+    remove: function (key) {
+      try { window.localStorage.removeItem(key); } catch (e) { /* noop */ }
+    },
+    getJSON: function (key, fallback) {
+      try {
+        var raw = window.localStorage.getItem(key);
+        if (!raw) return fallback;
+        var val = JSON.parse(raw);
+        return val && typeof val === 'object' ? val : fallback;
+      } catch (e) { return fallback; }
+    },
+    setJSON: function (key, obj) {
+      try { window.localStorage.setItem(key, JSON.stringify(obj)); return true; }
+      catch (e) { return false; }
+    }
+  };
+
+  /* ============================================================
+   * Helpers
+   * ============================================================ */
+  var RTL_RE = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+  function isRtl(text) { return RTL_RE.test(String(text || '')); }
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function () { return legacyCopy(text); });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+  function legacyCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  /* ============================================================
+   * QuizI18n - EN / ID
+   * ============================================================ */
+  var I18N = {
+    en: {
+      'a11y.langToggle': 'Switch language',
+      'a11y.close': 'Close',
+      'a11y.progress': 'Quiz progress',
+      'a11y.options': 'Answer options',
+      'a11y.navStrip': 'Jump to question',
+      'a11y.navShow': 'Show question numbers',
+      'a11y.navHide': 'Hide question numbers',
+      'a11y.option': 'Option',
+      'a11y.back': 'Back to role choice',
+      'home.title': 'Quiz Master',
+      'home.subtitle': 'Practice multiple-choice quizzes with instant results. No account, no server.',
+      'home.startSample': 'Start Sample Quiz',
+      'home.inputCode': 'input code',
+      'home.loadQuiz': 'Load Quiz (.txt / URL)',
+      'home.copyTemplate': 'Copy template',
+      'home.settings': 'Settings',
+      'home.continueLast': 'Continue your last quiz?',
+      'home.continue': 'Continue',
+      'home.privacy': 'Your answers and settings never leave this device. A linked quiz is read straight from its host; if that host blocks the browser, a small serverless function or a public CORS proxy fetches just that file.',
+      'role.subtitle': 'Choose a role to get started.',
+      'role.teacher': 'Teacher',
+      'role.teacherHint': 'Create questions with ChatGPT, then load them here.',
+      'role.student': 'Student',
+      'role.studentHint': 'Solve a quiz: sample, code, or link.',
+      'teacher.title': 'Teacher',
+      'teacher.buatSoal': 'Create Questions',
+      'teacher.buatSoalHint': 'Opens ChatGPT in a new tab with a ready-made wizard prompt. Once the questions are ready, copy them into a .txt file, a raw link, or a Pastebin code, then load them below.',
+      'teacher.loadTitle': 'Load questions',
+      'gen.title': 'Create questions with AI',
+      'gen.topic': 'Topic',
+      'gen.topicPh': 'e.g. Animals and their habitats',
+      'gen.grade': 'Level / grade',
+      'gen.gradePh': 'e.g. Grade 4',
+      'gen.lang': 'Question language',
+      'gen.level': 'Difficulty',
+      'gen.easy': 'Easy',
+      'gen.medium': 'Medium',
+      'gen.hard': 'Hard',
+      'gen.submit': 'Generate and get code',
+      'gen.working': 'Generating questions…',
+      'gen.privacy': 'The topic is sent to Google (Gemini) and the questions are stored in Google Sheets.',
+      'gen.errTopic': 'Enter a topic first.',
+      'gen.errFail': 'Could not generate questions. Try again.',
+      'gen.errQuota': 'Too many requests right now. Try again later.',
+      'gen.codeLabel': 'Your quiz code',
+      'gen.copyCode': 'Copy code',
+      'gen.copyLink': 'Copy link',
+      'gen.try': 'Try quiz',
+      'settings.title': 'Settings',
+      'settings.count': 'Number of questions',
+      'settings.all': 'All',
+      'settings.custom': 'Custom',
+      'settings.customHint': 'Custom count (1-200)',
+      'settings.qOrder': 'Question order',
+      'settings.oOrder': 'Answer option order',
+      'settings.random': 'Random',
+      'settings.original': 'Original order',
+      'settings.timer': 'Timer per question',
+      'settings.off': 'Off',
+      'settings.timerHint': 'When time runs out the question is skipped automatically.',
+      'settings.showAnswers': 'Show correct answers after finishing',
+      'settings.yes': 'Yes',
+      'settings.no': 'No',
+      'settings.save': 'Save',
+      'settings.reset': 'Reset to defaults',
+      'settings.theme': 'Appearance',
+      'settings.themeAuto': 'Match system',
+      'settings.themeLight': 'Light',
+      'settings.themeDark': 'Dark',
+      'settings.themeHint': 'Light and dark both keep full contrast, so pick whichever is easier on your eyes.',
+      'quiz.navNumbers': 'Question numbers',
+      'quiz.prev': 'Previous',
+      'quiz.next': 'Next',
+      'quiz.kbdHint': 'Keyboard: 1-4 to select, Enter for next, arrow keys to move',
+      'quiz.finish': 'See my score',
+      'result.title': 'Your Result',
+      'result.ariaScore': 'Score',
+      'result.correct': 'Correct',
+      'result.wrong': 'Wrong',
+      'result.skipped': 'Skipped',
+      'result.review': 'Review Answers',
+      'result.playAgain': 'Play Again',
+      'result.loadAnother': 'Load another quiz',
+      'result.msg.perfect': 'Perfect! You are a genius!',
+      'result.msg.great': 'Great! Almost perfect.',
+      'result.msg.ok': 'Not bad. Try again!',
+      'result.msg.low': 'Don\'t give up, keep learning!',
+      'review.title': 'Answer Detail',
+      'review.order': 'Wrong answers appear first. Each question keeps its own number.',
+      'review.your': 'Your answer:',
+      'review.correctAns': 'Correct answer:',
+      'review.none': 'No answer',
+      'review.youWereRight': 'Correct!',
+      'review.youWereWrong': 'Wrong. See the key below.',
+      'review.youSkipped': 'Skipped. See the key below.',
+      'import.title': 'Load Quiz',
+      'import.tabFile': 'File',
+      'import.tabUrl': 'URL',
+      'import.tabCode': 'Code',
+      'import.dropzone': 'Click or drop a .txt file here',
+      'import.dropzoneHint': 'Read only on your device, never uploaded.',
+      'import.dropzoneAria': 'Choose or drop a TXT file',
+      'import.urlLabel': 'Raw text URL',
+      'import.urlPlaceholder': 'https://pastebin.com/raw/xxxx',
+      'import.urlHint': 'Use a raw text link: Pastebin Raw, GitHub raw, or Gist raw.',
+      'import.loadUrl': 'Load from URL',
+      'import.codeLabel': 'Pastebin code',
+      'import.codePlaceholder': 'Tnk390bz',
+      'import.codeHint': 'Paste the raw link or just its code: pastebin.com/raw/Tnk390bz = Tnk390bz',
+      'import.loadCode': 'Load code',
+      'import.formatTitle': 'Supported TXT format:',
+      'import.formatNote': 'One question per line, fields separated by |. Mark the correct option with *. The older numbered block format still loads.',
+      'import.copyExample': 'Copy example',
+      'error.title': 'Question problems found',
+      'error.summary': '{n} problem(s) found in the quiz file:',
+      'error.tryAgain': 'Try Again',
+      'error.loadTxt': 'Load TXT',
+      'error.countShort': 'Question {n}: needs at least 2 options (found {L}).',
+      'error.noText': 'Question {n}: question text is empty.',
+      'error.missingOption': 'Question {n}: missing option {L}.',
+      'error.missingAnswer': 'Question {n}: missing answer key (mark the correct option with * or add "Answer: A").',
+      'error.invalidAnswer': 'Question {n}: answer key "{v}" is not a valid option letter.',
+      'error.answerNoOption': 'Question {n}: answer key points to missing option {L}.',
+      'error.optionOutside': 'Question {n}: option {L} appears after the answer line.',
+      'error.answerOutside': 'Question {n}: answer line appears before any option.',
+      'error.dupOption': 'Question {n}: duplicate option {L} (later value ignored).',
+      'error.dupAnswer': 'Question {n}: duplicate answer line (first one kept).',
+      'error.multiAnswer': 'Question {n}: more than one option is marked correct (the first one is used).',
+      'error.emptyOption': 'Question {n}: option {L} is empty (check the | separators).',
+      'error.tooManyOptions': 'Question {n}: more than 8 options (found {L}).',
+      'error.loadFailed': 'Failed to load quiz.',
+      'error.cors': 'Could not fetch this URL. The host blocks the browser and every fallback failed (or you are offline).',
+      'error.corsHint': 'Try a raw link: GitHub raw, Pastebin /raw/, or a Gist raw URL. You can also load a TXT file instead.',
+      'error.http': 'Server returned HTTP {n}.',
+      'error.network': 'Network error. Check the address or your connection.',
+      'error.emptyFile': 'The file is empty.',
+      'error.noQuestions': 'No valid questions found. Check the format.',
+      'error.titleMissing': 'Title line is missing or invalid, so a default title is used.',
+      'loading.title': 'Loading…',
+      'loading.sub': 'Fetching quiz data',
+      'toast.copied': 'Copied to clipboard',
+      'toast.copyFail': 'Could not copy. Select and copy manually.',
+      'toast.settingsSaved': 'Settings saved',
+      'toast.settingsReset': 'Settings reset to defaults',
+      'toast.loadWarning': 'Loaded with {n} warning(s). Check the details.',
+      'toast.filledWithExisting': 'Count exceeds available questions. Using all {n}.',
+      'footer.made': 'Made with care'
+    },
+    id: {
+      'a11y.langToggle': 'Ganti bahasa',
+      'a11y.close': 'Tutup',
+      'a11y.progress': 'Progres kuis',
+      'a11y.options': 'Opsi jawaban',
+      'a11y.navStrip': 'Lompat ke soal',
+      'a11y.navShow': 'Tampilkan nomor soal',
+      'a11y.navHide': 'Sembunyikan nomor soal',
+      'a11y.option': 'Opsi',
+      'a11y.back': 'Kembali ke pilihan peran',
+      'home.title': 'Quiz Master',
+      'home.subtitle': 'Berlatih soal pilihan ganda dengan hasil instan, tanpa akun dan tanpa server.',
+      'home.startSample': 'Mulai Kuis Contoh',
+      'home.inputCode': 'input kode',
+      'home.loadQuiz': 'Load Kuis (.txt / URL)',
+      'home.copyTemplate': 'Salin template',
+      'home.settings': 'Settings',
+      'home.continueLast': 'Lanjutkan kuis terakhir?',
+      'home.continue': 'Lanjutkan',
+      'home.privacy': 'Jawaban dan pengaturanmu tidak pernah dikirim ke mana pun. Soal dari sebuah link dibaca langsung dari situsnya; kalau situs itu memblokir browser, fungsi serverless kecil atau proxy CORS publik yang mengambil file itu.',
+      'role.subtitle': 'Pilih peran untuk mulai.',
+      'role.teacher': 'Guru',
+      'role.teacherHint': 'Buat soal dengan ChatGPT, lalu muat soalnya di sini.',
+      'role.student': 'Siswa',
+      'role.studentHint': 'Kerjakan soal: contoh, kode, atau link.',
+      'teacher.title': 'Guru',
+      'teacher.buatSoal': 'Buat Soal',
+      'teacher.buatSoalHint': 'Membuka ChatGPT di tab baru dengan prompt wizard siap pakai. Setelah soal selesai, salin hasilnya ke file .txt, link raw, atau kode Pastebin, lalu muat di bawah.',
+      'teacher.loadTitle': 'Muat soal',
+      'gen.title': 'Buat soal dengan AI',
+      'gen.topic': 'Topik',
+      'gen.topicPh': 'mis. Hewan dan habitatnya',
+      'gen.grade': 'Jenjang / kelas',
+      'gen.gradePh': 'mis. Kelas 4 MI',
+      'gen.lang': 'Bahasa soal',
+      'gen.level': 'Tingkat kesulitan',
+      'gen.easy': 'Mudah',
+      'gen.medium': 'Sedang',
+      'gen.hard': 'Sulit',
+      'gen.submit': 'Buat dan dapatkan kode',
+      'gen.working': 'Membuat soal…',
+      'gen.privacy': 'Topik dikirim ke Google (Gemini) dan soal disimpan di Google Sheets.',
+      'gen.errTopic': 'Isi topik dulu.',
+      'gen.errFail': 'Gagal membuat soal. Coba lagi.',
+      'gen.errQuota': 'Terlalu banyak permintaan. Coba lagi nanti.',
+      'gen.codeLabel': 'Kode kuis kamu',
+      'gen.copyCode': 'Salin kode',
+      'gen.copyLink': 'Salin link',
+      'gen.try': 'Coba kuis',
+      'settings.title': 'Settings',
+      'settings.count': 'Jumlah soal',
+      'settings.all': 'Semua',
+      'settings.custom': 'Kustom',
+      'settings.customHint': 'Jumlah kustom (1-200)',
+      'settings.qOrder': 'Urutan soal',
+      'settings.oOrder': 'Urutan opsi jawaban',
+      'settings.random': 'Acak',
+      'settings.original': 'Sesuai urutan',
+      'settings.timer': 'Timer per soal',
+      'settings.off': 'Mati',
+      'settings.timerHint': 'Jika waktu habis, soal dilewati otomatis.',
+      'settings.showAnswers': 'Tampilkan kunci setelah selesai',
+      'settings.yes': 'Ya',
+      'settings.no': 'Tidak',
+      'settings.save': 'Simpan',
+      'settings.reset': 'Reset default',
+      'settings.theme': 'Tampilan',
+      'settings.themeAuto': 'Ikuti sistem',
+      'settings.themeLight': 'Terang',
+      'settings.themeDark': 'Gelap',
+      'settings.themeHint': 'Terang dan gelap sama-sama kontras penuh, jadi pilih yang paling nyaman di matamu.',
+      'quiz.navNumbers': 'Nomor soal',
+      'quiz.prev': 'Sebelumnya',
+      'quiz.next': 'Lanjut',
+      'quiz.kbdHint': 'Keyboard: 1-4 pilih, Enter lanjut, panah untuk pindah soal',
+      'quiz.finish': 'Lihat Skor',
+      'result.title': 'Hasil Kamu',
+      'result.ariaScore': 'Skor',
+      'result.correct': 'Benar',
+      'result.wrong': 'Salah',
+      'result.skipped': 'Lewati',
+      'result.review': 'Review Jawaban',
+      'result.playAgain': 'Main Lagi',
+      'result.loadAnother': 'Load kuis lain',
+      'result.msg.perfect': 'Sempurna! Kamu jenius!',
+      'result.msg.great': 'Hebat! Hampir sempurna.',
+      'result.msg.ok': 'Lumayan, coba lagi ya!',
+      'result.msg.low': 'Jangan menyerah, belajar lagi!',
+      'review.title': 'Detail Jawaban',
+      'review.order': 'Soal yang salah dijawab ditampilkan lebih dulu. Nomor soal tetap nomor aslinya.',
+      'review.your': 'Jawabanmu:',
+      'review.correctAns': 'Jawaban benar:',
+      'review.none': 'Tidak dijawab',
+      'review.youWereRight': 'Benar!',
+      'review.youWereWrong': 'Salah. Lihat kunci di bawah.',
+      'review.youSkipped': 'Dilewati. Lihat kunci di bawah.',
+      'import.title': 'Load Kuis',
+      'import.tabFile': 'File',
+      'import.tabUrl': 'URL',
+      'import.tabCode': 'Kode',
+      'import.dropzone': 'Klik atau tarik file .txt ke sini',
+      'import.dropzoneHint': 'Hanya dibaca di perangkatmu, tidak pernah diunggah.',
+      'import.dropzoneAria': 'Pilih atau tarik file TXT',
+      'import.urlLabel': 'URL raw text',
+      'import.urlPlaceholder': 'https://pastebin.com/raw/xxxx',
+      'import.urlHint': 'Gunakan link raw text: Pastebin Raw, GitHub raw, atau Gist raw.',
+      'import.loadUrl': 'Load dari URL',
+      'import.codeLabel': 'Kode Pastebin',
+      'import.codePlaceholder': 'Tnk390bz',
+      'import.codeHint': 'Tempel link raw atau kodenya saja: pastebin.com/raw/Tnk390bz = Tnk390bz',
+      'import.loadCode': 'Muat kode',
+      'import.formatTitle': 'Format TXT yang didukung:',
+      'import.formatNote': 'Satu soal satu baris, dipisah |. Tandai opsi benar dengan *. Format lama per blok tetap bisa dimuat.',
+      'import.copyExample': 'Copy contoh',
+      'error.title': 'Soal Bermasalah',
+      'error.summary': '{n} masalah ditemukan di file kuis:',
+      'error.tryAgain': 'Coba Lagi',
+      'error.loadTxt': 'Load TXT',
+      'error.countShort': 'Soal {n}: butuh minimal 2 opsi (ditemukan {L}).',
+      'error.noText': 'Soal {n}: teks soal kosong.',
+      'error.missingOption': 'Soal {n}: opsi {L} tidak ada.',
+      'error.missingAnswer': 'Soal {n}: kunci jawaban tidak ada (tandai opsi benar dengan * atau tambahkan "Answer: A").',
+      'error.invalidAnswer': 'Soal {n}: kunci "{v}" bukan huruf opsi yang valid.',
+      'error.answerNoOption': 'Soal {n}: kunci menunjuk opsi {L} yang tidak ada.',
+      'error.optionOutside': 'Soal {n}: opsi {L} muncul setelah baris Answer.',
+      'error.answerOutside': 'Soal {n}: baris Answer muncul sebelum opsi manapun.',
+      'error.dupOption': 'Soal {n}: opsi {L} duplikat (nilai terakhir diabaikan).',
+      'error.dupAnswer': 'Soal {n}: baris Answer duplikat (yang pertama dipakai).',
+      'error.multiAnswer': 'Soal {n}: lebih dari satu opsi ditandai benar (yang pertama dipakai).',
+      'error.emptyOption': 'Soal {n}: opsi {L} kosong (periksa pemisah |).',
+      'error.tooManyOptions': 'Soal {n}: opsi lebih dari 8 (ditemukan {L}).',
+      'error.loadFailed': 'Gagal memuat kuis.',
+      'error.cors': 'Tidak bisa mengambil URL ini. Situsnya memblokir browser dan semua jalur cadangan gagal (atau kamu sedang offline).',
+      'error.corsHint': 'Coba link raw: GitHub raw, Pastebin /raw/, atau Gist raw. Bisa juga load file TXT.',
+      'error.http': 'Server mengembalikan HTTP {n}.',
+      'error.network': 'Kesalahan jaringan. Cek alamat atau koneksi.',
+      'error.emptyFile': 'File kosong.',
+      'error.noQuestions': 'Tidak ada soal valid. Periksa format.',
+      'error.titleMissing': 'Baris Title hilang atau tidak valid, jadi judul default dipakai.',
+      'loading.title': 'Memuat…',
+      'loading.sub': 'Mengambil data kuis',
+      'toast.copied': 'Tersalin ke clipboard',
+      'toast.copyFail': 'Gagal menyalin. Silakan salin manual.',
+      'toast.settingsSaved': 'Settings tersimpan',
+      'toast.settingsReset': 'Settings direset ke default',
+      'toast.loadWarning': 'Termuat dengan {n} peringatan. Cek detailnya.',
+      'toast.filledWithExisting': 'Jumlah melebihi soal tersedia. Memakai semua {n}.',
+      'footer.made': 'Dibuat dengan hati'
+    }
+  };
+
+  var QuizI18n = {
+    lang: 'en',
+    t: function (key, params) {
+      var pack = I18N[this.lang] || I18N.en;
+      var s = pack[key] !== undefined ? pack[key] : (I18N.en[key] !== undefined ? I18N.en[key] : key);
+      if (params) {
+        Object.keys(params).forEach(function (k) {
+          s = s.split('{' + k + '}').join(String(params[k]));
+        });
+      }
+      return s;
+    },
+    setLang: function (lang) {
+      this.lang = (lang === 'id') ? 'id' : 'en';
+      document.documentElement.setAttribute('lang', this.lang === 'id' ? 'id' : 'en');
+      this.apply();
+      QuizStorage.set(QS.LANG, this.lang);
+    },
+    init: function () {
+      var saved = QuizStorage.get(QS.LANG, null);
+      if (saved === 'en' || saved === 'id') { this.lang = saved; }
+      else {
+        var nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'en';
+        this.lang = (nav && nav.toLowerCase().indexOf('id') === 0) ? 'id' : 'en';
+      }
+      document.documentElement.setAttribute('lang', this.lang === 'id' ? 'id' : 'en');
+      this.apply();
+    },
+    apply: function () {
+      var self = this;
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        el.textContent = self.t(el.getAttribute('data-i18n'));
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+        el.setAttribute('placeholder', self.t(el.getAttribute('data-i18n-placeholder')));
+      });
+      document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+        el.setAttribute('title', self.t(el.getAttribute('data-i18n-title')));
+      });
+      document.querySelectorAll('[data-i18n-attr]').forEach(function (el) {
+        var spec = el.getAttribute('data-i18n-attr');
+        var m = spec.match(/^([a-zA-Z-]+):(.+)$/);
+        if (m) el.setAttribute(m[1], self.t(m[2]));
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(function (btn) {
+        btn.setAttribute('aria-pressed', btn.getAttribute('data-lang') === self.lang ? 'true' : 'false');
+      });
+    }
+  };
+
+  /* ============================================================
+   * QuizParser - parser TXT dengan validasi + error per soal
+   * ============================================================ */
+  var RE_TITLE = /^title\s*:\s*(.+)$/i;
+  var RE_QUESTION = /^(\d{1,3})\s*[.)]\s*(.*)$/;
+  var RE_OPTION = /^([A-Ha-h])\s*[).:]\s*(.+)$/;
+  var RE_ANSWER = /^answer\s*:?\s*(\S{1,3})\s*\.?$/i;
+
+  function letterToIndex(letter) {
+    var c = String(letter || '').trim().toUpperCase().charAt(0);
+    return /^[A-H]$/.test(c) ? c.charCodeAt(0) - 65 : -1;
+  }
+
+  function QuizParser() {}
+  QuizParser.parse = function (rawText) {
+    var problems = [];
+    var questions = [];
+    var title = 'Quiz Master';
+    var titleFound = false;
+    var lines = String(rawText || '').replace(/\r\n?/g, '\n').split('\n');
+
+    var cur = null; // { num, line, text, options:{}, order:[] }
+
+    function flush() {
+      if (!cur) return;
+      if (!cur.text || !cur.text.trim()) {
+        problems.push({ code: 'noText', q: cur.num, line: cur.line });
+      }
+      var count = cur.order.length;
+      if (count < 2) {
+        problems.push({ code: 'countShort', q: cur.num, line: cur.line, L: count });
+      }
+      // Missing letters between A..last
+      for (var i = 0; i < cur.order.length; i++) {
+        var expected = String.fromCharCode(65 + i);
+        if (cur.order[i] !== expected) {
+          problems.push({ code: 'missingOption', q: cur.num, line: cur.line, L: expected });
+        }
+      }
+      if (!cur.answerLetter) {
+        problems.push({ code: 'missingAnswer', q: cur.num, line: cur.line });
+      } else {
+        var idx = letterToIndex(cur.answerLetter);
+        if (idx === -1 || idx >= 26) {
+          problems.push({ code: 'invalidAnswer', q: cur.num, line: cur.line, v: cur.answerLetter });
+        } else if (!cur.options[idx]) {
+          problems.push({ code: 'answerNoOption', q: cur.num, line: cur.line, L: cur.answerLetter.toUpperCase() });
+        } else if (cur.text && cur.text.trim() && count >= 2 && idx < count) {
+          var opts = cur.order.map(function (letter) { return cur.options[letterToIndex(letter)]; });
+          questions.push({ question: cur.text.trim(), options: opts, correctIndex: idx });
+        }
+      }
+      cur = null;
+    }
+
+    // One-line rows: "Question | option | *correct option | ...". The star marks
+    // the answer, so no numbering and no Answer line are needed. Rows that do
+    // not survive validation report through the same problem list below.
+    var oneLineNo = 0;
+    function addOneLine(cells, lineNo) {
+      oneLineNo++;
+      var text = cells[0].trim();
+      // Generators often keep the old "12." numbering on a one-line row. The
+      // row does not need it, so the number is dropped instead of shown inside
+      // the question. A dot without a following space ("5.5 km") is left alone.
+      text = text.replace(/^\d{1,3}\s*[.)]\s+/, '');
+      var opts = [];
+      var starAt = -1;
+      var stars = 0;
+      var emptyAt = -1;
+      for (var i = 1; i < cells.length; i++) {
+        var cell = cells[i].trim();
+        if (cell.charAt(0) === '*') {
+          stars++;
+          if (starAt === -1) starAt = i - 1;
+          cell = cell.slice(1).trim();
+        }
+        if (!cell && emptyAt === -1) emptyAt = i - 1;
+        opts.push(cell);
+      }
+      if (opts.length > 8) {
+        problems.push({ code: 'tooManyOptions', q: oneLineNo, line: lineNo, L: opts.length });
+        return;
+      }
+      if (!text) problems.push({ code: 'noText', q: oneLineNo, line: lineNo });
+      if (opts.length < 2) {
+        problems.push({ code: 'countShort', q: oneLineNo, line: lineNo, L: opts.length });
+        return;
+      }
+      if (emptyAt !== -1) {
+        problems.push({ code: 'emptyOption', q: oneLineNo, line: lineNo, L: String.fromCharCode(65 + emptyAt) });
+        return;
+      }
+      if (!text) return;
+      if (stars === 0) {
+        problems.push({ code: 'missingAnswer', q: oneLineNo, line: lineNo });
+        return;
+      }
+      if (stars > 1) problems.push({ code: 'multiAnswer', q: oneLineNo, line: lineNo });
+      questions.push({ question: text, options: opts, correctIndex: starAt });
+    }
+
+    for (var li = 0; li < lines.length; li++) {
+      var raw = lines[li];
+      var line = raw.trim();
+      if (!line) continue;
+
+      var mTitle = line.match(RE_TITLE);
+      if (mTitle && !cur) {
+        title = mTitle[1].trim() || title;
+        titleFound = true;
+        continue;
+      }
+
+      // A line with two or more pipes is a one-line question; a single pipe can
+      // still be part of a block-format option, so it falls through untouched.
+      var cells = line.split('|');
+      if (cells.length >= 3) {
+        flush();
+        addOneLine(cells, li + 1);
+        continue;
+      }
+
+      var mQ = line.match(RE_QUESTION);
+      if (mQ) {
+        flush();
+        cur = { num: parseInt(mQ[1], 10), line: li + 1, text: mQ[2], options: {}, order: [], answerLetter: null };
+        continue;
+      }
+
+      var mO = line.match(RE_OPTION);
+      if (mO && cur) {
+        var letter = mO[1].toUpperCase();
+        var oIdx = letterToIndex(letter);
+        if (cur.options[oIdx] !== undefined) {
+          problems.push({ code: 'dupOption', q: cur.num, line: li + 1, L: letter });
+        } else {
+          cur.options[oIdx] = mO[2].trim();
+          cur.order.push(letter);
+        }
+        continue;
+      }
+
+      var mA = line.match(RE_ANSWER);
+      if (mA && cur) {
+        if (cur.answerLetter) {
+          problems.push({ code: 'dupAnswer', q: cur.num, line: li + 1 });
+        } else if (cur.order.length === 0) {
+          problems.push({ code: 'answerOutside', q: cur.num, line: li + 1 });
+          cur.answerLetter = mA[1];
+          cur.answerBeforeOptions = true;
+        } else {
+          cur.answerLetter = mA[1];
+        }
+        continue;
+      }
+      if (mA && !cur) {
+        problems.push({ code: 'answerOutside', q: 0, line: li + 1 });
+        continue;
+      }
+
+      // Continuation: append to question text or last option
+      if (cur) {
+        if (cur.answerLetter && cur.order.length > 0) {
+          // after answer: stray option-like? treat as noise
+        } else if (cur.order.length > 0) {
+          var lastLetter = cur.order[cur.order.length - 1];
+          cur.options[letterToIndex(lastLetter)] += ' ' + line;
+        } else {
+          cur.text = (cur.text ? cur.text + ' ' + line : line);
+        }
+      }
+      // lines before first question are ignored (allow preamble)
+    }
+    flush();
+
+    if (!titleFound) problems.push({ code: 'titleMissing', q: 0, line: 1 });
+    if (questions.length === 0) problems.push({ code: 'noQuestions', q: 0, line: 1 });
+
+    return { ok: questions.length > 0, questions: questions, title: title, problems: problems };
+  };
+  window.QuizParser = QuizParser;
+
+  /* ============================================================
+   * QuizLoader - file & URL, normalisasi Pastebin
+   * ============================================================ */
+  var QuizLoader = {
+    readFileText: function (file) {
+      if (file.text) return file.text();
+      return new Promise(function (resolve, reject) {
+        try {
+          var r = new FileReader();
+          r.onload = function () { resolve(String(r.result)); };
+          r.onerror = function () { reject(new Error('filereader')); };
+          r.readAsText(file);
+        } catch (e) { reject(e); }
+      });
+    },
+    normalizeUrl: function (url) {
+      var u = String(url || '').trim();
+      if (!u) return '';
+      if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+      var m = u.match(/^https?:\/\/pastebin\.com\/(raw\/)?([A-Za-z0-9]+)\/?$/i);
+      if (m) return 'https://pastebin.com/raw/' + m[2];
+      return u;
+    },
+    fromText: function (text, defaultTitle) {
+      var parsed = QuizParser.parse(text);
+      return parsed;
+    },
+    fromFile: function (file) {
+      var self = this;
+      return self.readFileText(file).then(function (text) {
+        return self.fromText(text);
+      });
+    },
+    /* Load order for a linked quiz:
+       1. the browser fetches the link directly (GitHub raw, Gist raw and
+          same-origin files send CORS headers, so they never touch anything
+          else);
+       2. hosts that send none (Pastebin) make the browser block the read, so
+          the app retries through the same-origin serverless function at
+          /api/raw, which exists on the Vercel deployment;
+       3. with no function (plain static copy) the public CORS proxies below
+          are tried one by one, in this fixed order.
+       Only the link being loaded goes out; answers and settings stay put. */
+    PROXIES: [
+      function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+      function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+      function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
+    ],
+    /* fetch() with a deadline, so one dead fallback cannot hang the loader. */
+    fetchWithTimeout: function (url, ms) {
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = 0;
+      var init = { redirect: 'follow' };
+      if (ctrl) {
+        init.signal = ctrl.signal;
+        timer = setTimeout(function () { ctrl.abort(); }, ms);
+      }
+      function stop() { if (timer) { clearTimeout(timer); timer = 0; } }
+      return fetch(url, init).then(function (res) { stop(); return res; }, function (e) { stop(); throw e; });
+    },
+    fetchText: function (url) {
+      return this.fetchWithTimeout(url, 30000).then(function (res) {
+        if (!res.ok) {
+          var err = new Error('http ' + res.status);
+          err.kind = 'http'; err.status = res.status;
+          throw err;
+        }
+        return res.text();
+      }, function () {
+        // A blocked CORS read and being offline look identical to fetch();
+        // navigator.onLine tells them apart, and the CORS message already
+        // mentions the offline case.
+        var err = new Error('fetch blocked');
+        err.kind = (typeof navigator !== 'undefined' && navigator.onLine === false) ? 'network' : 'cors';
+        throw err;
+      });
+    },
+    fetchViaServer: function (url) {
+      // Same-origin serverless function. It tags every response, so anything
+      // else that answers /api/raw (a static 404 page, an SPA fallback) reads
+      // as "no function here", never as quiz text.
+      return this.fetchWithTimeout('/api/raw?url=' + encodeURIComponent(url), 12000).then(function (res) {
+        if (res.headers.get('X-Quiz-Proxy') !== '1') {
+          var miss = new Error('proxy missing');
+          miss.kind = 'proxy-missing';
+          throw miss;
+        }
+        if (!res.ok) {
+          var err = new Error('http ' + res.status);
+          err.status = res.status;
+          err.kind = (res.status === 502 || res.status === 503 || res.status === 504) ? 'network' : 'http';
+          throw err;
+        }
+        return res.text();
+      }, function () {
+        var miss = new Error('proxy unreachable');
+        miss.kind = 'proxy-missing';
+        throw miss;
+      });
+    },
+    fetchViaProxies: function (url) {
+      // One try per public proxy. An error page, an empty body, or markup
+      // instead of text counts as a failed attempt and the next one gets its
+      // turn; the last error is reported when every proxy is out.
+      var self = this;
+      var list = this.PROXIES;
+      var lastErr = null;
+      function attempt(i) {
+        if (i >= list.length) {
+          var e = lastErr || new Error('proxy failed');
+          e.kind = 'proxy-failed';
+          throw e;
+        }
+        return self.fetchWithTimeout(list[i](url), 15000).then(function (res) {
+          if (!res.ok) {
+            var err = new Error('proxy http ' + res.status);
+            err.status = res.status;
+            throw err;
+          }
+          return res.text();
+        }).then(function (text) {
+          if (!text.trim() || /^\s*(?:<!doctype html|<html|<\?xml)/i.test(text)) {
+            throw new Error('proxy junk');
+          }
+          return text;
+        }).catch(function (err) {
+          lastErr = err;
+          return attempt(i + 1);
+        });
+      }
+      return Promise.resolve().then(function () { return attempt(0); });
+    },
+    fetchViaProxy: function (url) {
+      // Own function first (same origin, nothing goes to a third party), then
+      // the public proxies. 'proxy-missing' is reported only when neither
+      // layer exists, so fromUrl can surface the original direct error.
+      var self = this;
+      return this.fetchViaServer(url).catch(function (serverErr) {
+        // A definite 4xx from our own function is the host's answer; the
+        // public proxies would only repeat it.
+        if (serverErr && serverErr.kind === 'http' && serverErr.status < 500) throw serverErr;
+        return self.fetchViaProxies(url).catch(function (publicErr) {
+          if (publicErr && publicErr.kind !== 'proxy-missing') throw publicErr;
+          if (serverErr && serverErr.kind !== 'proxy-missing') throw serverErr;
+          var miss = new Error('no proxy available');
+          miss.kind = 'proxy-missing';
+          throw miss;
+        });
+      });
+    },
+    fromUrl: function (url) {
+      var norm = this.normalizeUrl(url);
+      if (!norm) return Promise.reject({ kind: 'empty' });
+      var self = this;
+      return this.fetchText(norm).catch(function (directErr) {
+        // A real HTTP answer means the host was reachable, so there is nothing
+        // for the fallbacks to add.
+        if (directErr && directErr.kind === 'http') throw directErr;
+        return self.fetchViaProxy(norm).catch(function (proxyErr) {
+          throw (proxyErr && proxyErr.kind !== 'proxy-missing') ? proxyErr : directErr;
+        });
+      }).then(function (text) {
+        return QuizParser.parse(text);
+      });
+    }
+  };
+
+  /* ============================================================
+   * DEFAULT_QUIZ - kuis contoh Benny the Rabbit (format TXT,
+   * diproses oleh parser yang sama seperti file .txt)
+   * ============================================================ */
+  /* Built-in sample quiz. It stays in the legacy numbered block format on
+     purpose: clicking "Start Sample Quiz" keeps that parser path exercised.
+     Convert it if the legacy format is ever dropped. */
+  var DEFAULT_QUIZ_TEXT = [
+    'Title: Quiz Master',
+    '',
+    '1. Who lives in a green forest?',
+    'A. Benny the rabbit',
+    'B. A flying dragon',
+    'C. A city dog',
+    'D. A sea fish',
+    'Answer: A',
+    '',
+    '2. Who does Benny help?',
+    'A. His friends',
+    'B. Strangers in a city',
+    'C. Robots',
+    'D. Pirates',
+    'Answer: A',
+    '',
+    '3. Who feels safe in the forest?',
+    'A. The animals',
+    'B. Only visitors',
+    'C. Only hunters',
+    'D. Nobody',
+    'Answer: A',
+    '',
+    '4. Who does not hurt other animals?',
+    'A. Benny',
+    'B. A wild tiger',
+    'C. A noisy bird',
+    'D. A forest monster',
+    'Answer: A',
+    '',
+    '5. Who likes to jump and play?',
+    'A. Benny',
+    'B. A sleeping bear',
+    'C. A slow turtle',
+    'D. A lazy cat',
+    'Answer: A',
+    '',
+    '6. What does Benny eat every day?',
+    'A. Fresh carrots',
+    'B. Candy',
+    'C. Pizza',
+    'D. Ice cream',
+    'Answer: A',
+    '',
+    '7. What does Benny like to do?',
+    'A. Jump and play',
+    'B. Drive a car',
+    'C. Watch TV',
+    'D. Cook food',
+    'Answer: A',
+    '',
+    '8. What does Benny do for his friends?',
+    'A. He helps them',
+    'B. He ignores them',
+    'C. He scares them',
+    'D. He chases them',
+    'Answer: A',
+    '',
+    '9. What makes the forest feel safe?',
+    'A. Benny does not hurt others',
+    'B. Big walls',
+    'C. No animals',
+    'D. Loud sounds',
+    'Answer: A',
+    '',
+    '10. What food does Benny avoid?',
+    'A. Candy',
+    'B. Carrots',
+    'C. Vegetables',
+    'D. Healthy food',
+    'Answer: A',
+    '',
+    '11. Does Benny live in a green forest?',
+    'A. Yes, he does',
+    'B. No, he lives in a city',
+    'C. No, he lives in water',
+    'D. No, he travels',
+    'Answer: A',
+    '',
+    '12. Does Benny eat fresh carrots every day?',
+    'A. Yes, he does',
+    'B. No, only once',
+    'C. No, never',
+    'D. No, only at night',
+    'Answer: A',
+    '',
+    '13. Does Benny hurt other animals?',
+    'A. No, he does not',
+    'B. Yes, always',
+    'C. Sometimes for fun',
+    'D. Only at night',
+    'Answer: A',
+    '',
+    '14. Does Benny like to jump?',
+    'A. Yes, he does',
+    'B. No, he hates jumping',
+    'C. Only on weekends',
+    'D. Only when tired',
+    'Answer: A',
+    '',
+    '15. Does Benny help his friends?',
+    'A. Yes, he does',
+    'B. No, he ignores them',
+    'C. Rarely',
+    'D. Only sometimes',
+    'Answer: A',
+    '',
+    '16. Why does the forest feel happy and safe?',
+    'A. Benny is kind and helpful',
+    'B. Because it is empty',
+    'C. Because it is dark',
+    'D. Because nobody moves',
+    'Answer: A',
+    '',
+    '17. Why do animals feel safe with Benny?',
+    'A. He does not hurt them',
+    'B. He runs away',
+    'C. He hides food',
+    'D. He shouts loudly',
+    'Answer: A',
+    '',
+    '18. Why does Benny help his friends?',
+    'A. He is kind',
+    'B. He wants candy',
+    'C. He feels bored',
+    'D. He feels angry',
+    'Answer: A',
+    '',
+    '19. Why does Benny eat fresh carrots?',
+    'A. It is his daily habit',
+    'B. He dislikes food',
+    'C. He forgets to eat',
+    'D. He only drinks water',
+    'Answer: A',
+    '',
+    '20. Why is Benny a good friend?',
+    'A. He helps others and plays kindly',
+    'B. He takes food',
+    'C. He scares animals',
+    'D. He stays alone',
+    'Answer: A'
+  ].join('\n');
+
+  var EXAMPLE_TXT = [
+    'Title: Contoh Kuis',
+    '',
+    'Who lives in a green forest? | *Benny the rabbit | A flying dragon | A city dog | A sea fish',
+    'Who does Benny help? | Strangers in a city | *His friends | Robots | Pirates',
+    ''
+  ].join('\n');
+
+  /* The wizard prompt behind the Teacher screen's "Buat Soal" button. It is
+     data, kept as one string here (the file's array + join style) and encoded
+     once at boot, so the markup never carries a ~15KB URL. chatgpt.com accepts
+     ?prompt= and prefills the composer with it. */
+  var CHATGPT_PROMPT = [
+    '# AI PEMBUAT LATIHAN SOAL INTERAKTIF',
+    '',
+    'Anda adalah AI yang membantu guru merancang dan membuat latihan soal sekolah.',
+    '',
+    'Tugas utama Anda adalah membantu guru menentukan konfigurasi soal melalui proses interaktif sebelum soal dibuat.',
+    '',
+    'JANGAN langsung membuat soal ketika percakapan dimulai.',
+    '',
+    'Gunakan alur wizard berikut secara berurutan.',
+    '',
+    '1. MATA PELAJARAN',
+    '',
+    'Tanyakan:',
+    '',
+    '"Mata pelajaran apa yang ingin dibuatkan latihannya?"',
+    '',
+    'Contoh:',
+    '- Bahasa Inggris',
+    '- Matematika',
+    '- Bahasa Indonesia',
+    '- IPA',
+    '- IPS',
+    '- PPKn',
+    '- Pendidikan Agama',
+    '- dan lainnya.',
+    '',
+    'Simpan jawaban pengguna sebagai MATA_PELAJARAN.',
+    '',
+    '2. KELAS',
+    '',
+    'Tanyakan:',
+    '',
+    '"Untuk kelas berapa?"',
+    '',
+    'Contoh:',
+    '- Kelas 1',
+    '- Kelas 2',
+    '- Kelas 3',
+    '- Kelas 4',
+    '- Kelas 5',
+    '- Kelas 6',
+    '',
+    'Simpan jawaban sebagai KELAS.',
+    '',
+    '3. BAB MATA PELAJARAN',
+    '',
+    'Tanyakan:',
+    '',
+    '"Bab atau materi utama apa yang ingin dilatihkan?"',
+    '',
+    'Simpan jawaban sebagai BAB.',
+    '',
+    'Setelah pengguna memberikan bab, berikan beberapa contoh subbab yang relevan berdasarkan mata pelajaran, kelas, dan bab yang diberikan.',
+    '',
+    'Format:',
+    '',
+    '"Beberapa subbab yang bisa digunakan:',
+    '',
+    '1. [Subbab 1]',
+    '2. [Subbab 2]',
+    '3. [Subbab 3]',
+    '4. [Subbab 4]',
+    '5. [Subbab 5]',
+    '',
+    'Anda bisa memilih salah satu, beberapa subbab, semua subbab, atau menulis subbab sendiri."',
+    '',
+    'Jika pengguna memilih "Semua subbab", gunakan seluruh subbab yang relevan dengan bab tersebut.',
+    '',
+    'Jangan membuat subbab secara acak. Subbab harus relevan dengan mata pelajaran, kelas, dan bab yang diberikan.',
+    '',
+    'Simpan pilihan sebagai SUBBAB.',
+    '',
+    '4. JUMLAH SOAL',
+    '',
+    'Tanyakan:',
+    '',
+    '"Berapa banyak soal yang ingin dibuat?"',
+    '',
+    'Berikan rekomendasi:',
+    '- 50 soal',
+    '- 100 soal',
+    '- 200 soal',
+    '- 300 soal',
+    '- 500 soal',
+    '',
+    'Pengguna tetap boleh memasukkan jumlah lain.',
+    '',
+    'Batas:',
+    '- Minimum: 50 soal',
+    '- Maksimum: 500 soal',
+    '',
+    'Jika pengguna memasukkan angka di luar batas, minta pengguna memilih jumlah antara 50 sampai 500.',
+    '',
+    'Simpan sebagai JUMLAH_SOAL.',
+    '',
+    '5. TINGKAT KESULITAN',
+    '',
+    'Gunakan konfigurasi default:',
+    '',
+    'Mudah: 25%',
+    'Menengah: 25%',
+    'Sulit: 25%',
+    'HOTS: 25%',
+    '',
+    'Tanyakan:',
+    '',
+    '"Gunakan komposisi tingkat kesulitan default 25% mudah, 25% menengah, 25% sulit, dan 25% HOTS, atau ingin mengubahnya?"',
+    '',
+    'Jika pengguna memilih default, gunakan:',
+    '',
+    'Mudah: 25%',
+    'Menengah: 25%',
+    'Sulit: 25%',
+    'HOTS: 25%',
+    '',
+    'Jika pengguna ingin mengubah, minta persentase masing-masing:',
+    '',
+    'Mudah: __%',
+    'Menengah: __%',
+    'Sulit: __%',
+    'HOTS: __%',
+    '',
+    'Pastikan total seluruh persentase harus tepat 100%.',
+    '',
+    'Jika total tidak 100%, beri tahu pengguna dan minta diperbaiki.',
+    '',
+    'Simpan sebagai TINGKAT_KESULITAN.',
+    '',
+    '6. PREVIEW CONFIGURATION',
+    '',
+    'Setelah seluruh informasi diperoleh, tampilkan preview konfigurasi sebelum membuat soal.',
+    '',
+    'Gunakan format sederhana:',
+    '',
+    'PREVIEW LATIHAN SOAL',
+    '',
+    'Mata Pelajaran: [MATA_PELAJARAN]',
+    'Kelas: [KELAS]',
+    'Bab: [BAB]',
+    'Subbab: [SUBBAB]',
+    'Jumlah Soal: [JUMLAH_SOAL]',
+    '',
+    'Tingkat Kesulitan:',
+    'Mudah: [X]%',
+    'Menengah: [X]%',
+    'Sulit: [X]%',
+    'HOTS: [X]%',
+    '',
+    'Perkiraan Jumlah:',
+    'Mudah: [jumlah]',
+    'Menengah: [jumlah]',
+    'Sulit: [jumlah]',
+    'HOTS: [jumlah]',
+    '',
+    'Tanyakan:',
+    '',
+    '"Apakah konfigurasi ini sudah sesuai?"',
+    '',
+    'Berikan pilihan:',
+    '',
+    '1. Ya, buat soal',
+    '2. Ubah konfigurasi',
+    '',
+    'Jika pengguna memilih "Ubah konfigurasi", tanyakan bagian mana yang ingin diubah dan hanya ulangi langkah yang diperlukan.',
+    '',
+    'Jangan mengulang seluruh wizard jika tidak diperlukan.',
+    '',
+    '7. GENERATE SOAL',
+    '',
+    'Hanya setelah pengguna mengonfirmasi konfigurasi, buat soal.',
+    '',
+    'Soal harus:',
+    '',
+    '- Sesuai dengan mata pelajaran.',
+    '- Sesuai dengan kelas.',
+    '- Sesuai dengan bab.',
+    '- Sesuai dengan subbab yang dipilih.',
+    '- Sesuai dengan jumlah yang diminta.',
+    '- Mengikuti distribusi tingkat kesulitan.',
+    '- Tidak keluar dari materi.',
+    '- Tidak membuat soal yang terlalu mirip satu sama lain.',
+    '- Menggunakan bahasa yang sesuai dengan tingkat perkembangan siswa.',
+    '- Menghindari pertanyaan yang memiliki lebih dari satu jawaban benar.',
+    '- Memastikan hanya ada satu jawaban yang benar untuk setiap soal.',
+    '- Menjaga variasi konteks dan bentuk pertanyaan.',
+    '- Untuk soal HOTS, tingkatkan kemampuan berpikir yang diperlukan, bukan sekadar menggunakan bahasa yang sulit.',
+    '- Soal HOTS tetap harus menggunakan bahasa yang dapat dipahami siswa sesuai kelasnya.',
+    '',
+    'Jika jumlah soal sangat banyak, tetap pertahankan konsistensi format dan distribusi tingkat kesulitan.',
+    '',
+    '8. FORMAT OUTPUT',
+    '',
+    'Output FINAL WAJIB berada di dalam satu codebox.',
+    '',
+    'Jangan memberikan penjelasan sebelum atau sesudah codebox.',
+    '',
+    'Gunakan format:',
+    '',
+    'Title: [Judul latihan]',
+    '',
+    '[Nomor]. [Soal] | [Opsi 1] | [Opsi 2] | [Opsi 3] | [Opsi 4]',
+    '',
+    'Jawaban benar wajib diawali dengan tanda *.',
+    '',
+    'Contoh:',
+    '',
+    'Title: Contoh Kuis',
+    '',
+    '1. Who lives in a green forest? | *Benny the rabbit | A flying dragon | A city dog | A sea fish',
+    '2. Who does Benny help? | Strangers in a city | *His friends | Robots | Pirates',
+    '',
+    'ATURAN FORMAT OUTPUT',
+    '',
+    '1. Baris pertama wajib:',
+    'Title: [Judul]',
+    '',
+    '2. Setiap soal harus berada dalam satu baris dan diawali nomor soal, diikuti titik.',
+    '',
+    '3. Format setiap soal:',
+    '[Nomor]. Pertanyaan | Opsi 1 | Opsi 2 | Opsi 3 | Opsi 4',
+    '',
+    '4. Jawaban benar wajib diawali dengan tanda *.',
+    '',
+    'Contoh:',
+    '2. 2 + 3 = ? | 4 | *5 | 6 | 7',
+    '',
+    '5. Jangan menggunakan:',
+    'A.',
+    'B.',
+    'C.',
+    'D.',
+    '',
+    'di dalam opsi.',
+    '',
+    '6. Nomor soal cukup satu kali di awal baris; jangan mengulang nomornya di dalam teks pertanyaan.',
+    '',
+    '7. Jangan menambahkan "Answer:".',
+    '',
+    '8. Jangan memberikan kunci jawaban terpisah.',
+    '',
+    '9. Jangan memberikan pembahasan.',
+    '',
+    '10. Jangan menggunakan markdown table.',
+    '',
+    '11. Jangan memberikan komentar atau metadata tambahan.',
+    '',
+    '12. Pastikan setiap soal memiliki tepat 4 opsi.',
+    '',
+    '13. Pastikan tepat 1 opsi memiliki tanda *.',
+    '',
+    '14. Tanda * hanya digunakan pada jawaban yang benar.',
+    '',
+    '15. Variasikan posisi jawaban benar secara seimbang antara opsi pertama, kedua, ketiga, dan keempat.',
+    '',
+    '16. Jangan membuat semua jawaban benar berada pada posisi yang sama.',
+    '',
+    '17. Jangan menggunakan tanda "|" di dalam teks pertanyaan maupun opsi selain sebagai pemisah kolom.',
+    '',
+    'ATURAN INTERAKSI',
+    '',
+    '- Jangan melompati pertanyaan wizard.',
+    '- Jangan membuat soal sebelum pengguna melakukan konfirmasi pada Preview Configuration.',
+    '- Jika jawaban pengguna belum jelas, minta klarifikasi.',
+    '- Jika pengguna memberikan beberapa informasi sekaligus, gunakan informasi tersebut dan hanya tanyakan informasi yang masih belum tersedia.',
+    '- Jika pengguna mengubah salah satu konfigurasi, perbarui preview.',
+    '- Jangan kehilangan konfigurasi yang sudah disepakati.',
+    '- Jangan mengubah jumlah soal atau persentase kesulitan tanpa persetujuan pengguna.',
+    '- Gunakan konteks jawaban sebelumnya.',
+    '- Prioritaskan kualitas soal daripada pengulangan pola pertanyaan.',
+    '- Gunakan bahasa yang sesuai dengan kelas siswa.',
+    '- Jangan membuat soal di luar bab atau subbab yang telah dipilih.',
+    '- Pastikan distribusi jumlah soal berdasarkan persentase kesulitan sedekat mungkin dengan konfigurasi yang dipilih.',
+    '- Jika hasil perhitungan persentase menghasilkan angka desimal, bulatkan secara logis dan pastikan total jumlah soal tetap sama dengan jumlah yang diminta.',
+    '- Jangan menggunakan emoji.',
+    '- Jangan menggunakan dekorasi, garis pemisah, atau simbol visual yang tidak diperlukan.',
+    '- Gunakan bahasa yang sederhana, jelas, dan profesional.',
+    '',
+    'MULAI',
+    '',
+    'Mulai percakapan dengan pertanyaan:',
+    '',
+    '"Mata pelajaran apa yang ingin dibuatkan latihannya?"'
+  ].join('\n');
+
+  var CHATGPT_PROMPT_URL = 'https://chatgpt.com/?prompt=' + encodeURIComponent(CHATGPT_PROMPT);
+
+  /* ============================================================
+   * QuizApp - controller utama
+   * ============================================================ */
+  /* One session is 20 questions: hundreds of rows go in, a fresh random 20
+     comes out every time, options shuffled. Count and both orders stay
+     adjustable in Settings. */
+  var DEFAULT_SETTINGS = { count: '20', customCount: 10, qOrder: 'random', oOrder: 'random', timer: 0, showAnswers: true, theme: 'auto' };
+
+  function $(id) { return document.getElementById(id); }
+
+  var QuizApp = {
+    /* ---------- state ---------- */
+    settings: null,
+    dataset: [],
+    masterTitle: '',
+    navStripOpen: true,
+    current: 0,
+    answers: [],          // selected option index per question, -1 = skipped
+    timerId: null,
+    timerLeft: 0,
+    modalStack: [],
+    lastFocus: null,
+
+    init: function () {
+      var self = this;
+      // One source of truth for "phone layout": the inline strip and the drawer
+      // are two presentations of the same control, switched by this query only.
+      this._mqMobile = window.matchMedia('(max-width:640px)');
+      QuizI18n.init();
+      this.settings = this.loadSettings();
+      this.applyTheme();
+      this.bindTopbar();
+      this.bindNav();
+      this.bindLanding();
+      this.bindHome();
+      this.bindSettings();
+      this.bindImport();
+      this.bindModals();
+      this.bindKeyboard();
+      this.showScreen('role');
+      this.refreshLastQuizBox();
+
+      // ?source= / ?code= / /code= auto-load
+      var params = new URLSearchParams(window.location.search);
+      var src = params.get('source');
+      if (src) {
+        this.loadFromUrl(src);
+      } else {
+        var code = params.get('code');
+        if (!code) {
+          // The /code=<...> form is served through the vercel.json rewrite, so
+          // the address bar still carries the value in the path.
+          var m = window.location.pathname.match(/^\/code=(.+)$/);
+          if (m) {
+            code = m[1].replace(/\/+$/, '');
+            try { code = decodeURIComponent(code); } catch (e) { /* keep as typed */ }
+          }
+        }
+        if (code) this.loadFromCode(code);
+      }
+    },
+
+    /* ---------- screens & modals ---------- */
+    showScreen: function (name) {
+      // The drawer belongs to the quiz screen only: never carry it over to the
+      // result or home screen (no focus steal, it is a screen change anyway).
+      if (name !== 'quiz' && this.navStripOpen && this.isMobile()) this.closeNavDrawer(false);
+      ['role', 'home', 'teacher', 'settings', 'quiz', 'result'].forEach(function (s) {
+        $('screen-' + s).classList.toggle('active', s === name);
+      });
+      // The quiz owns the viewport: the app header hides at every width (and on
+      // phones the footer too) so the question keeps the whole band. Fullscreen
+      // follows the same rule: in while the quiz screen is up, out the moment it
+      // is left (result or home both get the header back).
+      document.body.classList.toggle('quiz-active', name === 'quiz');
+      this.setQuizFullscreen(name === 'quiz');
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    },
+
+    openModal: function (id) {
+      var overlay = $(id);
+      if (this.modalStack.indexOf(id) !== -1) return;
+      this.modalStack.push(id);
+      this.lastFocus = document.activeElement;
+      overlay.classList.add('open');
+      var focusables = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusables.length) focusables[0].focus();
+    },
+    closeModal: function (id) {
+      var overlay = $(id);
+      overlay.classList.remove('open');
+      var i = this.modalStack.indexOf(id);
+      if (i !== -1) this.modalStack.splice(i, 1);
+      if (this.modalStack.length === 0 && this.lastFocus && this.lastFocus.focus) {
+        try { this.lastFocus.focus(); } catch (e) { /* noop */ }
+      }
+    },
+    closeTopModal: function () {
+      if (this.modalStack.length) this.closeModal(this.modalStack[this.modalStack.length - 1]);
+    },
+    bindModals: function () {
+      var self = this;
+      document.querySelectorAll('.modal-overlay').forEach(function (ov) {
+        ov.addEventListener('mousedown', function (e) {
+          if (e.target === ov && ov.id !== 'modalLoading') self.closeModal(ov.id);
+        });
+      });
+      document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          self.closeModal(btn.closest('.modal-overlay').id);
+        });
+      });
+      // focus trap
+      document.addEventListener('focusin', function (e) {
+        if (!self.modalStack.length) return;
+        var top = $(self.modalStack[self.modalStack.length - 1]);
+        if (!top.contains(e.target)) {
+          var f = top.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+          if (f.length) f[0].focus();
+        }
+      });
+    },
+
+    toast: function (msg, type) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (type ? ' toast-' + type : '');
+      clearTimeout(this._toastTid);
+      this._toastTid = setTimeout(function () { t.classList.remove('show'); }, 2600);
+    },
+
+    /* ---------- topbar ---------- */
+    bindTopbar: function () {
+      var self = this;
+      document.querySelectorAll('.lang-toggle button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          QuizI18n.setLang(btn.getAttribute('data-lang'));
+          self.updateDynamicTexts();
+        });
+      });
+    },
+
+    updateDynamicTexts: function () {
+      // re-render dynamic labels that are not covered by data-i18n
+      if (this.dataset.length && $('screen-quiz').classList.contains('active')) {
+        this.renderQuestion(this.current, true);
+      }
+      if ($('screen-result').classList.contains('active')) {
+        this.renderResultTexts();
+      }
+      this.refreshLastQuizBox();
+    },
+
+    /* Light / dark / auto. 'auto' removes the override so prefers-color-scheme wins. */
+    applyTheme: function () {
+      var mode = (this.settings && this.settings.theme) || 'auto';
+      var root = document.documentElement;
+      if (mode === 'auto') root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', mode);
+    },
+
+    /* Fullscreen is best effort. The browser wants a fresh user gesture: the
+       click that starts a sample quiz has one, an async URL load may not, and
+       iPhone Safari never allows page fullscreen at all. Every failure is
+       swallowed because the quiz has to work either way. */
+    setQuizFullscreen: function (on) {
+      try {
+        var d = document;
+        var current = d.fullscreenElement || d.webkitFullscreenElement;
+        if (on) {
+          if (current) return;
+          var root = d.documentElement;
+          var req = root.requestFullscreen || root.webkitRequestFullscreen;
+          if (!req) return;
+          var p = req.call(root);
+          if (p && typeof p.catch === 'function') p.catch(function () {});
+        } else if (current) {
+          var exit = d.exitFullscreen || d.webkitExitFullscreen;
+          if (exit) exit.call(d);
+        }
+      } catch (e) { /* never let fullscreen break the quiz */ }
+    },
+
+    /* ---------- settings ---------- */
+    loadSettings: function () {
+      var s = QuizStorage.getJSON(QS.SETTINGS, null);
+      if (!s) s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      // v2: one session is 20 questions. Settings saved by an older build
+      // carry the old default ('all'), which would keep loading every row;
+      // move only that value over and leave every deliberate pick alone.
+      if (s.settingsVersion !== 2) {
+        if (s.count === 'all') s.count = DEFAULT_SETTINGS.count;
+        s.settingsVersion = 2;
+      }
+      // sanitize
+      if (['all', '5', '10', '20', 'custom'].indexOf(s.count) === -1) s.count = DEFAULT_SETTINGS.count;
+      s.customCount = Math.min(200, Math.max(1, parseInt(s.customCount, 10) || 10));
+      if (['random', 'original'].indexOf(s.qOrder) === -1) s.qOrder = 'random';
+      if (['random', 'original'].indexOf(s.oOrder) === -1) s.oOrder = 'random';
+      s.timer = [0, 10, 20, 30, 60].indexOf(parseInt(s.timer, 10)) !== -1 ? parseInt(s.timer, 10) : 0;
+      s.showAnswers = s.showAnswers !== false;
+      if (['auto', 'light', 'dark'].indexOf(s.theme) === -1) s.theme = 'auto';
+      return s;
+    },
+    saveSettings: function () {
+      QuizStorage.setJSON(QS.SETTINGS, this.settings);
+    },
+    bindSettings: function () {
+      var self = this;
+      function wireGroup(groupId, key, isNumeric) {
+        var group = $(groupId);
+        group.querySelectorAll('.pill').forEach(function (pill) {
+          pill.addEventListener('click', function () {
+            group.querySelectorAll('.pill').forEach(function (p) { p.setAttribute('aria-pressed', 'false'); });
+            pill.setAttribute('aria-pressed', 'true');
+            var val = pill.getAttribute('data-value');
+            self.settings[key] = isNumeric ? parseInt(val, 10) : val;
+            if (key === 'count') {
+              $('customCountWrap').classList.toggle('visible', val === 'custom');
+            }
+          });
+        });
+      }
+      wireGroup('grpCount', 'count', false);
+      wireGroup('grpQOrder', 'qOrder', false);
+      wireGroup('grpOOrder', 'oOrder', false);
+      wireGroup('grpTimer', 'timer', true);
+      wireGroup('grpShowAnswers', 'showAnswers', false);
+      // showAnswers uses yes/no strings
+      $('grpShowAnswers').querySelectorAll('.pill').forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          self.settings.showAnswers = pill.getAttribute('data-value') === 'yes';
+        });
+      });
+      wireGroup('grpTheme', 'theme', false);
+      // Theme previews live, before the Save button is pressed.
+      $('grpTheme').querySelectorAll('.pill').forEach(function (pill) {
+        pill.addEventListener('click', function () { self.applyTheme(); });
+      });
+      $('customCount').addEventListener('input', function () {
+        var v = parseInt(this.value, 10);
+        var err = '';
+        if (isNaN(v) || v < 1 || v > 200) err = QuizI18n.t('settings.customHint');
+        $('customCountError').textContent = err;
+        if (!isNaN(v) && v >= 1 && v <= 200) self.settings.customCount = v;
+      });
+      $('btnSaveSettings').addEventListener('click', function () {
+        self.saveSettings();
+        self.toast(QuizI18n.t('toast.settingsSaved'), 'success');
+        self.showScreen('home');
+      });
+      $('btnResetSettings').addEventListener('click', function () {
+        self.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        self.applyTheme();
+        self.fillSettingsUI();
+        self.saveSettings();
+        self.toast(QuizI18n.t('toast.settingsReset'));
+      });
+      $('btnSettingsBack').addEventListener('click', function () { self.showScreen('home'); });
+      this.fillSettingsUI();
+    },
+    fillSettingsUI: function () {
+      var s = this.settings;
+      function mark(groupId, value) {
+        $(groupId).querySelectorAll('.pill').forEach(function (p) {
+          p.setAttribute('aria-pressed', p.getAttribute('data-value') === String(value) ? 'true' : 'false');
+        });
+      }
+      mark('grpCount', s.count);
+      mark('grpQOrder', s.qOrder);
+      mark('grpOOrder', s.oOrder);
+      mark('grpTimer', s.timer);
+      mark('grpShowAnswers', s.showAnswers ? 'yes' : 'no');
+      mark('grpTheme', s.theme);
+      $('customCount').value = s.customCount;
+      $('customCountWrap').classList.toggle('visible', s.count === 'custom');
+    },
+
+    /* ---------- landing (role choice) & teacher ---------- */
+    bindLanding: function () {
+      var self = this;
+      $('btnRoleGuru').addEventListener('click', function () { self.showScreen('teacher'); });
+      $('btnRoleSiswa').addEventListener('click', function () { self.showScreen('home'); });
+      $('btnHomeBack').addEventListener('click', function () { self.showScreen('role'); });
+      $('btnTeacherBack').addEventListener('click', function () { self.showScreen('role'); });
+      // One long prompt, one encode: the link carries the whole wizard text.
+      $('btnBuatSoal').setAttribute('href', CHATGPT_PROMPT_URL);
+      $('btnTeacherCode').addEventListener('click', function () {
+        self.switchTab('code');
+        self.openModal('modalImport');
+        $('codeInput').focus();
+      });
+      $('btnTeacherLoad').addEventListener('click', function () {
+        self.switchTab('file');
+        self.openModal('modalImport');
+      });
+      self.bindGen();
+      $('btnTeacherTemplate').addEventListener('click', function () {
+        copyText(EXAMPLE_TXT).then(function (ok) {
+          self.toast(QuizI18n.t(ok ? 'toast.copied' : 'toast.copyFail'), ok ? 'success' : 'error');
+        });
+      });
+    },
+
+    /* ---------- teacher: AI generator (POST /api/generate -> code) ---------- */
+    bindGen: function () {
+      var self = this;
+      var state = { lang: QuizI18n.lang === 'id' ? 'id' : 'en', count: '10', level: 'sedang' };
+      var map = { grpGenLang: 'lang', grpGenCount: 'count', grpGenLevel: 'level' };
+      Object.keys(map).forEach(function (gid) {
+        var g = $(gid);
+        g.querySelectorAll('.pill').forEach(function (p) {
+          p.setAttribute('aria-pressed', p.getAttribute('data-value') === state[map[gid]] ? 'true' : 'false');
+          p.addEventListener('click', function () {
+            state[map[gid]] = p.getAttribute('data-value');
+            g.querySelectorAll('.pill').forEach(function (o) { o.setAttribute('aria-pressed', o === p ? 'true' : 'false'); });
+          });
+        });
+      });
+      var btn = $('btnGenerate'), err = $('genError'), box = $('genResult'), last = '';
+      var done = function () {
+        self.closeModal('modalLoading');
+        $('loadingSub').textContent = QuizI18n.t('loading.sub');
+        btn.disabled = false;
+      };
+      btn.addEventListener('click', function () {
+        var topic = $('genTopic').value.trim();
+        err.textContent = ''; box.hidden = true;
+        if (topic.length < 3) { err.textContent = QuizI18n.t('gen.errTopic'); $('genTopic').focus(); return; }
+        btn.disabled = true;
+        self.openModal('modalLoading');
+        $('loadingSub').textContent = QuizI18n.t('gen.working');
+        fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: topic, grade: $('genGrade').value, lang: state.lang, count: state.count, level: state.level })
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
+        }).then(function (x) {
+          done();
+          if (!x.ok || !x.j.code) {
+            var q = x.j.error === 'rate' || x.j.error === 'quota' || x.j.error === 'ai-quota';
+            err.textContent = QuizI18n.t(q ? 'gen.errQuota' : 'gen.errFail');
+            return;
+          }
+          last = x.j.code;
+          $('genCode').textContent = last;
+          box.hidden = false;
+          box.scrollIntoView({ block: 'nearest' });
+        }).catch(function () { done(); err.textContent = QuizI18n.t('gen.errFail'); });
+      });
+      var copy = function (text) {
+        copyText(text).then(function (ok) {
+          self.toast(QuizI18n.t(ok ? 'toast.copied' : 'toast.copyFail'), ok ? 'success' : 'error');
+        });
+      };
+      $('btnGenCopyCode').addEventListener('click', function () { copy(last); });
+      $('btnGenCopyLink').addEventListener('click', function () { copy(location.origin + '/?code=' + last); });
+      $('btnGenTry').addEventListener('click', function () { self.loadFromCode(last); });
+    },
+
+    /* ---------- home ---------- */
+    bindHome: function () {
+      var self = this;
+      $('btnStartSample').addEventListener('click', function () {
+        var parsed = QuizParser.parse(DEFAULT_QUIZ_TEXT);
+        self.startQuiz(parsed);
+      });
+      $('btnInputTxt').addEventListener('click', function () {
+        // Code is the default way in: open straight on the code tab with the
+        // field focused. File and raw link stay one tap away.
+        self.switchTab('code');
+        self.openModal('modalImport');
+        $('codeInput').focus();
+      });
+      $('btnCopyTemplate').addEventListener('click', function () {
+        copyText(EXAMPLE_TXT).then(function (ok) {
+          self.toast(QuizI18n.t(ok ? 'toast.copied' : 'toast.copyFail'), ok ? 'success' : 'error');
+        });
+      });
+      $('btnOpenSettings').addEventListener('click', function () {
+        self.fillSettingsUI();
+        self.showScreen('settings');
+      });
+      $('btnContinueLast').addEventListener('click', function () { self.resumeLastQuiz(); });
+    },
+    refreshLastQuizBox: function () {
+      var last = QuizStorage.getJSON(QS.LAST, null);
+      var box = $('lastQuizBox');
+      if (last && last.dataset && last.dataset.length && last.current < last.dataset.length) {
+        box.classList.add('visible');
+        $('lastQuizBox').querySelector('[data-i18n-html]').textContent = QuizI18n.t('home.continueLast');
+        $('lastQuizMeta').textContent = (last.title || 'Quiz') + ' (' + (last.current + 1) + '/' + last.dataset.length + ')';
+      } else {
+        box.classList.remove('visible');
+      }
+    },
+    resumeLastQuiz: function () {
+      var last = QuizStorage.getJSON(QS.LAST, null);
+      if (!last || !last.dataset || !last.dataset.length) return;
+      this.dataset = last.dataset.map(function (q) {
+        return {
+          question: q.question,
+          options: q.options.slice(),
+          correctIndex: q.correctIndex,
+          shuffledOptions: q.options.slice(),
+          shuffledCorrect: q.correctIndex
+        };
+      });
+      this.masterTitle = last.title || 'Quiz';
+      // A resumed session only has the rows it was saved with.
+      this.sourcePool = null;
+      this.current = Math.min(last.current || 0, this.dataset.length - 1);
+      this.answers = last.answers || this.dataset.map(function () { return -1; });
+      this.currentSource = last.source || null;
+      this.beginQuizSession(false);
+      this.showScreen('quiz');
+    },
+
+    /* ---------- import ---------- */
+    bindImport: function () {
+      var self = this;
+      // One source for the example shown in the modal and the copy button.
+      $('formatExample').textContent = EXAMPLE_TXT;
+      var dropzone = $('dropzone');
+      var fileInput = $('fileInput');
+
+      $('tabFile').addEventListener('click', function () { self.switchTab('file'); });
+      $('tabUrl').addEventListener('click', function () { self.switchTab('url'); });
+      $('tabCode').addEventListener('click', function () { self.switchTab('code'); });
+
+      dropzone.addEventListener('click', function () { fileInput.click(); });
+      dropzone.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) self.handleFile(fileInput.files[0]);
+        fileInput.value = '';
+      });
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+      });
+      ['dragleave', 'drop'].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
+      });
+      dropzone.addEventListener('drop', function (e) {
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) self.handleFile(f);
+      });
+
+      $('btnLoadUrl').addEventListener('click', function () {
+        var url = $('urlInput').value.trim();
+        if (!url) { $('urlInput').focus(); return; }
+        self.loadFromUrl(url);
+      });
+      $('urlInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); $('btnLoadUrl').click(); }
+      });
+
+      $('btnLoadCode').addEventListener('click', function () {
+        self.loadFromCode($('codeInput').value);
+      });
+      $('codeInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); $('btnLoadCode').click(); }
+      });
+
+      $('btnCopyExample').addEventListener('click', function () {
+        copyText(EXAMPLE_TXT).then(function (ok) {
+          self.toast(QuizI18n.t(ok ? 'toast.copied' : 'toast.copyFail'), ok ? 'success' : 'error');
+        });
+      });
+
+      $('btnErrorRetry').addEventListener('click', function () {
+        self.closeModal('modalError');
+        if (self._lastErrorKind === 'url' && self._lastErrorUrl) self.loadFromUrl(self._lastErrorUrl);
+        else self.openModal('modalImport');
+      });
+      $('btnErrorLoadTxt').addEventListener('click', function () {
+        self.closeModal('modalError');
+        self.switchTab('file');
+        self.openModal('modalImport');
+      });
+    },
+    switchTab: function (which) {
+      // Three entries, one modal: file, raw link, Pastebin code.
+      var tabs = { file: ['tabFile', 'panelFile'], url: ['tabUrl', 'panelUrl'], code: ['tabCode', 'panelCode'] };
+      Object.keys(tabs).forEach(function (key) {
+        var on = key === which;
+        $(tabs[key][0]).setAttribute('aria-selected', on ? 'true' : 'false');
+        $(tabs[key][1]).classList.toggle('active', on);
+      });
+    },
+    handleFile: function (file) {
+      var self = this;
+      this.openModal('modalLoading');
+      QuizLoader.fromFile(file).then(function (parsed) {
+        self.closeModal('modalLoading');
+        self.handleParsed(parsed);
+      }).catch(function () {
+        self.closeModal('modalLoading');
+        self.showErrorModal([{ code: 'emptyFile' }], 'file', null);
+      });
+    },
+    loadFromUrl: function (url) {
+      var self = this;
+      this._lastErrorKind = 'url';
+      this._lastErrorUrl = url;
+      this.openModal('modalLoading');
+      QuizLoader.fromUrl(url).then(function (parsed) {
+        self.closeModal('modalLoading');
+        self.currentSource = QuizLoader.normalizeUrl(url);
+        self.handleParsed(parsed);
+      }).catch(function (err) {
+        self.closeModal('modalLoading');
+        var code = (err && err.kind === 'http') ? 'http' : (err && err.kind === 'network' ? 'network' : 'cors');
+        self.showErrorModal([{ code: code, status: err && err.status }], 'url', url);
+      });
+    },
+    resolveCodeUrl: function (raw) {
+      var v = String(raw || '').trim();
+      if (!v) return '';
+      // 6-character Sheets code (Pastebin ids are 8): read through the same-origin API.
+      if (/^[A-HJ-NP-Z2-9]{6}$/i.test(v)) return location.origin + '/api/quiz?code=' + v.toUpperCase();
+      // Anything that already looks like a link goes through the same
+      // normaliser as the URL tab; a bare Pastebin code becomes its raw link.
+      if (/^https?:\/\//i.test(v) || /[\/.]/.test(v)) return QuizLoader.normalizeUrl(v);
+      return 'https://pastebin.com/raw/' + encodeURIComponent(v);
+    },
+    loadFromCode: function (raw) {
+      var url = this.resolveCodeUrl(raw);
+      if (!url) { $('codeInput').focus(); return; }
+      this.closeModal('modalImport');
+      this.loadFromUrl(url);
+    },
+    handleParsed: function (parsed) {
+      var fatal = parsed.problems.filter(function (p) {
+        return p.code !== 'dupOption' && p.code !== 'titleMissing';
+      });
+      if (!parsed.ok || (fatal.length && parsed.questions.length === 0)) {
+        this.showErrorModal(parsed.problems, 'parse', null);
+        return;
+      }
+      if (parsed.problems.length) {
+        this.showErrorModal(parsed.problems, 'warning', parsed.title);
+      }
+      this.startQuiz(parsed);
+    },
+    showErrorModal: function (problems, kind, loadedTitle) {
+      var self = this;
+      this._lastErrorKind = kind === 'url' ? 'url' : (kind === 'parse' ? 'file' : this._lastErrorKind);
+      var list = $('errorList');
+      list.textContent = '';
+      var summary = $('errorSummary');
+      if (kind === 'warning') {
+        summary.textContent = QuizI18n.t('error.summary', { n: problems.length }) + ' ' + (loadedTitle || '');
+      } else if (kind === 'url') {
+        var p = problems[0] || {};
+        summary.textContent = p.code === 'http'
+          ? QuizI18n.t('error.http', { n: p.status })
+          : QuizI18n.t('error.' + (p.code === 'network' ? 'network' : 'cors'));
+      } else {
+        summary.textContent = QuizI18n.t('error.summary', { n: problems.length });
+      }
+      problems.forEach(function (p) {
+        var li = document.createElement('li');
+        li.className = 'error-item' + (p.code === 'dupOption' || p.code === 'titleMissing' ? ' err-warning' : '');
+        var tag = document.createElement('span');
+        tag.className = 'err-tag';
+        tag.textContent = (p.code === 'dupOption' || p.code === 'titleMissing') ? 'warn' : 'error';
+        li.appendChild(tag);
+        var span = document.createElement('span');
+        var key = 'error.' + p.code;
+        // transport problems carry a status instead of a question number
+        var params = { n: (p.q !== undefined ? p.q : p.status), L: p.L, v: p.v, status: p.status };
+        if (QuizI18n.t(key) === key) {
+          span.textContent = p.code + (p.line ? ' (line ' + p.line + ')' : '');
+        } else {
+          span.textContent = QuizI18n.t(key, params) + (p.line && p.code !== 'http' && p.code !== 'network' && p.code !== 'cors' && p.code !== 'emptyFile' ? ' (line ' + p.line + ')' : '');
+        }
+        li.appendChild(span);
+        list.appendChild(li);
+      });
+      if (kind === 'url') {
+        var hint = document.createElement('li');
+        hint.className = 'error-item err-warning';
+        var s = document.createElement('span');
+        s.textContent = QuizI18n.t('error.corsHint');
+        hint.appendChild(s);
+        list.appendChild(hint);
+      }
+      this.openModal('modalError');
+    },
+
+    /* ---------- quiz lifecycle ---------- */
+    startQuiz: function (parsed) {
+      this.masterTitle = parsed.title || 'Quiz Master';
+      /* Keep the whole bank for the next Play Again draw. Without it, a long
+         TXT would replay the same 20 rows for the rest of the visit. */
+      this.sourcePool = (parsed.questions || []).slice();
+      this.dataset = this.buildDataset(parsed.questions);
+      this.current = 0;
+      this.answers = this.dataset.map(function () { return -1; });
+      this.persistLast();
+      this.beginQuizSession(true);
+      this.closeModal('modalImport');
+      this.showScreen('quiz');
+    },
+    buildDataset: function (questions) {
+      var s = this.settings;
+      var pool = questions.slice();
+      if (s.qOrder === 'random') pool = shuffle(pool);
+      var count = pool.length;
+      if (s.count === 'custom') count = Math.min(s.customCount, pool.length);
+      else if (s.count !== 'all') count = Math.min(parseInt(s.count, 10) || pool.length, pool.length);
+      var picked = pool.slice(0, count);
+      picked.forEach(function (q) {
+        if (s.oOrder === 'random') {
+          var paired = q.options.map(function (text, i) { return { text: text, correct: i === q.correctIndex }; });
+          paired = shuffle(paired);
+          q.shuffledOptions = paired.map(function (p) { return p.text; });
+          q.shuffledCorrect = paired.findIndex(function (p) { return p.correct; });
+        } else {
+          q.shuffledOptions = q.options.slice();
+          q.shuffledCorrect = q.correctIndex;
+        }
+      });
+      return picked;
+    },
+    beginQuizSession: function (resetAnswers) {
+      if (resetAnswers) this.answers = this.dataset.map(function () { return -1; });
+      this._timerQ = -1;
+      // The title is ellipsised on phones (one-row header), so the full name
+      // stays reachable through the native tooltip.
+      $('quizTitle').textContent = this.masterTitle;
+      $('quizTitle').setAttribute('title', this.masterTitle);
+      $('progressBar').setAttribute('aria-valuemax', String(this.dataset.length));
+      this.buildNavStrip();
+      this.setNavStripOpen(this.navStripPreferredOpen(), false);
+      this.renderQuestion(this.current, true);
+    },
+    persistLast: function () {
+      QuizStorage.setJSON(QS.LAST, {
+        title: this.masterTitle,
+        dataset: this.dataset.map(function (q) {
+          return { question: q.question, options: q.shuffledOptions, correctIndex: q.shuffledCorrect };
+        }),
+        answers: this.answers,
+        current: this.current,
+        source: this.currentSource || null
+      });
+      this.refreshLastQuizBox();
+    },
+
+    /* ---------- rendering ---------- */
+    buildNavStrip: function () {
+      var self = this;
+      var strip = $('navStrip');
+      strip.textContent = '';
+      this.dataset.forEach(function (_, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'nav-dot';
+        b.textContent = String(i + 1);
+        b.setAttribute('aria-label', QuizI18n.t('a11y.navStrip') + ' ' + (i + 1));
+        b.addEventListener('click', function () {
+          // Picking a number is also a dismissal: the phone drawer closes first
+          // (focus returns to the toggle), then the question renders.
+          if (self.isMobile() && self.navStripOpen) self.closeNavDrawer(true);
+          self.jumpTo(i);
+        });
+        strip.appendChild(b);
+      });
+    },
+    /* Phone layout is decided by one query (mirrored by the 640px CSS block)
+       and listened to, so a rotation or a window drag can never leave a stale
+       drawer or a stale [hidden] attribute behind. */
+    isMobile: function () {
+      if (!this._mqMobile) this._mqMobile = window.matchMedia('(max-width:640px)');
+      return this._mqMobile.matches;
+    },
+    // A wide screen has room for the number grid; a phone does not, so the first
+    // visit leans on the viewport. After that the user's own choice is kept.
+    // A phone never reads the saved flag: its drawer is an overlay, not a pref.
+    navStripPreferredOpen: function () {
+      if (this.isMobile()) return false;
+      var saved = QuizStorage.get(QS.NAVSTRIP, null);
+      if (saved === '1' || saved === '0') return saved === '1';
+      return window.matchMedia('(min-width:700px)').matches;
+    },
+    setNavStripOpen: function (open, persist) {
+      var mobile = this.isMobile();
+      this.navStripOpen = !!open;
+      // Only desktop persists the choice; the phone drawer is transient.
+      if (persist && !mobile) QuizStorage.set(QS.NAVSTRIP, this.navStripOpen ? '1' : '0');
+      this.syncNavToggle();
+      if (this.navStripOpen) {
+        // Runs after syncNavToggle, so the drawer already has its layout and
+        // updateNavStrip can center the active number inside it.
+        this.updateNavStrip();
+        // Only a user-initiated open lands here: the first open starts closed.
+        if (mobile) this.focusNavDrawer();
+      }
+    },
+    // Focus enters the drawer on the active number (or its close button when
+    // there is none) and leaves it again through closeNavDrawer.
+    focusNavDrawer: function () {
+      requestAnimationFrame(function () {
+        var strip = $('navStrip');
+        var active = strip && strip.querySelector('.nav-dot.current');
+        var target = active || $('btnNavClose');
+        if (target && target.focus) target.focus();
+      });
+    },
+    closeNavDrawer: function (returnFocus) {
+      if (!this.navStripOpen) return;
+      this.setNavStripOpen(false, false);
+      if (returnFocus) {
+        var btn = $('btnNavToggle');
+        if (btn && btn.focus) btn.focus();
+      }
+    },
+    // The breakpoint moved: on a phone the drawer closes, on desktop the strip
+    // returns to the persisted preference. No state survives the crossing.
+    onLayoutModeChange: function () {
+      if (this.isMobile()) this.setNavStripOpen(false, false);
+      else this.setNavStripOpen(this.navStripPreferredOpen(), false);
+    },
+    syncNavToggle: function () {
+      var strip = $('navStrip');
+      var btn = $('btnNavToggle');
+      var drawer = $('navDrawer');
+      if (!strip || !btn) return;
+      if (this.isMobile()) {
+        // The drawer stays laid out and is animated with a class: the hidden
+        // attribute would kill the slide (display:none has no geometry).
+        strip.hidden = false;
+        if (drawer) drawer.classList.toggle('is-open', this.navStripOpen);
+        document.body.classList.toggle('nav-drawer-open', this.navStripOpen);
+      } else {
+        if (drawer) drawer.classList.remove('is-open');
+        document.body.classList.remove('nav-drawer-open');
+        strip.hidden = !this.navStripOpen;
+      }
+      btn.setAttribute('aria-expanded', this.navStripOpen ? 'true' : 'false');
+      var label = QuizI18n.t(this.navStripOpen ? 'a11y.navHide' : 'a11y.navShow');
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    },
+    renderQuestion: function (idx, focusFirst) {
+      var self = this;
+      var q = this.dataset[idx];
+      if (!q) return;
+      this.current = idx;
+
+      // The title is ellipsised on phones (one-row header), so the full name
+      // stays reachable through the native tooltip.
+      $('quizTitle').textContent = this.masterTitle;
+      $('quizTitle').setAttribute('title', this.masterTitle);
+      $('counterLabel').textContent = (idx + 1) + ' / ' + this.dataset.length;
+      $('progressLabel').textContent = (idx + 1) + '/' + this.dataset.length;
+      $('progressBar').setAttribute('aria-valuenow', String(idx + 1));
+      $('progressFill').style.width = (((idx + 1) / this.dataset.length) * 100) + '%';
+
+      var qt = $('questionText');
+      qt.textContent = q.question; // XSS-safe: textContent only
+      qt.dir = isRtl(q.question) ? 'rtl' : 'auto';
+
+      var grid = $('optionsGrid');
+      grid.textContent = '';
+      // Column-major fill: half the rows per column (A C / B D on desktop).
+      grid.style.setProperty('--opt-rows', String(Math.ceil(q.shuffledOptions.length / 2)));
+      q.shuffledOptions.forEach(function (optText, i) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'option-btn' + (self.answers[idx] === i ? ' selected' : '');
+        btn.setAttribute('aria-pressed', self.answers[idx] === i ? 'true' : 'false');
+        btn.style.setProperty('--i', String(i)); // staggered entrance, see .option-btn
+        var letter = document.createElement('span');
+        letter.className = 'option-letter';
+        letter.textContent = String.fromCharCode(65 + i);
+        var text = document.createElement('span');
+        text.className = 'option-text';
+        text.textContent = optText; // XSS-safe
+        text.dir = isRtl(optText) ? 'rtl' : 'auto';
+        btn.appendChild(letter);
+        btn.appendChild(text);
+        btn.addEventListener('click', function () { self.selectOption(i); });
+        grid.appendChild(btn);
+      });
+
+      $('btnPrev').disabled = idx === 0;
+      var isLast = idx === this.dataset.length - 1;
+      $('btnNextLabel').textContent = isLast ? QuizI18n.t('quiz.finish') : QuizI18n.t('quiz.next');
+      this.updateNavStrip();
+      if (this._timerQ !== idx) {
+        this._timerQ = idx;
+        this.startTimer();
+      }
+    },
+    updateNavStrip: function () {
+      var strip = $('navStrip');
+      var dots = strip.querySelectorAll('.nav-dot');
+      var self = this;
+      dots.forEach(function (d, i) {
+        d.className = 'nav-dot';
+        if (self.answers[i] !== -1) d.classList.add('answered');
+        if (i === self.current) d.classList.add('current');
+      });
+      this.syncNavToggle();
+      // Nothing below needs measuring while the strip is off screen.
+      if (!this.navStripOpen) return;
+      // Long quizzes make this strip scroll inside itself, so keep the active
+      // cell in view. Only the strip's own scrollTop moves, never the page.
+      var active = dots[this.current];
+      if (active) {
+        var viewH = strip.clientHeight;
+        // .nav-strip is position:relative, so offsetTop is already measured from
+        // the strip itself. Do not subtract strip.offsetTop here.
+        var cellTop = active.offsetTop;
+        var cellBottom = cellTop + active.offsetHeight;
+        if (cellTop < strip.scrollTop || cellBottom > strip.scrollTop + viewH) {
+          strip.scrollTop = cellTop - (viewH - active.offsetHeight) / 2;
+        }
+      }
+    },
+
+    /* ---------- interaction ---------- */
+    selectOption: function (i) {
+      var q = this.dataset[this.current];
+      if (!q) return;
+      this.answers[this.current] = (this.answers[this.current] === i) ? -1 : i;
+      // Flip the picked row in place. Rebuilding the grid here would replay
+      // the optIn entrance animation on every pick (a visible blink); only
+      // the classes, aria state, and the answered dot actually change.
+      var self = this;
+      $('optionsGrid').querySelectorAll('.option-btn').forEach(function (btn, k) {
+        var on = self.answers[self.current] === k;
+        btn.classList.toggle('selected', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      this.updateNavStrip();
+      this.persistLast();
+    },
+    jumpTo: function (i) {
+      if (i < 0 || i >= this.dataset.length) return;
+      this.renderQuestion(i, false);
+    },
+    next: function () {
+      if (this.current < this.dataset.length - 1) {
+        this.renderQuestion(this.current + 1, false);
+      } else {
+        this.finishQuiz();
+      }
+    },
+    prev: function () {
+      if (this.current > 0) this.renderQuestion(this.current - 1, false);
+    },
+
+    /* ---------- timer ---------- */
+    startTimer: function () {
+      var self = this;
+      this.stopTimer();
+      var secs = this.settings.timer;
+      var chip = $('timerChip');
+      if (!secs) { chip.hidden = true; return; }
+      chip.hidden = false;
+      this.timerLeft = secs;
+      this.paintTimer();
+      this.timerId = setInterval(function () {
+        self.timerLeft--;
+        self.paintTimer();
+        if (self.timerLeft <= 0) {
+          self.stopTimer();
+          self.next(); // auto-advance (counts as skipped)
+        }
+      }, 1000);
+    },
+    stopTimer: function () {
+      if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
+    },
+    paintTimer: function () {
+      var chip = $('timerChip');
+      var m = Math.floor(this.timerLeft / 60);
+      var s = this.timerLeft % 60;
+      $('timerValue').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+      chip.classList.toggle('warning', this.timerLeft <= 10 && this.timerLeft > 5);
+      chip.classList.toggle('danger', this.timerLeft <= 5);
+    },
+
+    /* ---------- finish & result ---------- */
+    finishQuiz: function () {
+      this.stopTimer();
+      var correct = 0, wrong = 0, skipped = 0;
+      this.dataset.forEach(function (q, i) { if (this.answers[i] === -1) skipped++; }, this);
+      this.dataset.forEach(function (q, i) {
+        if (this.answers[i] === q.shuffledCorrect) correct++;
+        else if (this.answers[i] !== -1) wrong++;
+      }, this);
+      var total = this.dataset.length;
+      var pct = total ? Math.round((correct / total) * 100) : 0;
+      this._result = { correct: correct, wrong: wrong, skipped: skipped, pct: pct, total: total };
+      this.showScreen('result');
+      this.renderResultTexts();
+      QuizStorage.remove(QS.LAST);
+      this.refreshLastQuizBox();
+    },
+    renderResultTexts: function () {
+      if (!this._result) return;
+      var r = this._result;
+      var circle = $('scoreCircle');
+      var color = r.pct >= 80 ? 'var(--ok)' : (r.pct >= 50 ? 'var(--brand)' : 'var(--no)');
+      circle.style.setProperty('--score-pct', String(r.pct));
+      circle.style.setProperty('--score-color', color);
+      // the graded stamp is a sibling, so the colour is set on the shared parent
+      if (circle.parentNode) circle.parentNode.style.setProperty('--score-color', color);
+      $('scoreFraction').textContent = r.correct + '/' + r.total;
+      circle.setAttribute('aria-label', QuizI18n.t('result.ariaScore') + ': ' + r.pct + '% (' + r.correct + '/' + r.total + ')');
+      var msgKey = r.pct === 100 ? 'result.msg.perfect' : r.pct >= 80 ? 'result.msg.great' : r.pct >= 50 ? 'result.msg.ok' : 'result.msg.low';
+      $('resultMessage').textContent = QuizI18n.t(msgKey);
+      this.animateScore(r.pct);
+      $('statCorrect').textContent = String(r.correct);
+      $('statWrong').textContent = String(r.wrong);
+      $('statSkipped').textContent = String(r.skipped);
+    },
+    /* Count-up on the score. One-shot, cancelled on re-run, and skipped entirely
+       when the visitor asks for reduced motion. */
+    animateScore: function (pct) {
+      var el = $('scorePct');
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce || !window.requestAnimationFrame) {
+        el.textContent = pct + '%';
+        return;
+      }
+      if (this._scoreRaf) window.cancelAnimationFrame(this._scoreRaf);
+      var self = this;
+      var start = window.performance && performance.now ? performance.now() : Date.now();
+      el.textContent = '0%';
+      var frame = function (now) {
+        var t = Math.min(1, (now - start) / 700);
+        var eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(pct * eased) + '%';
+        if (t < 1) self._scoreRaf = window.requestAnimationFrame(frame);
+        else self._scoreRaf = 0;
+      };
+      this._scoreRaf = window.requestAnimationFrame(frame);
+    },
+    openReview: function () {
+      var self = this;
+      if (!this._result) return;
+      var list = $('reviewList');
+      list.textContent = '';
+      /* Wrong answers first, then skipped, then correct: the review is a study
+         aid, so the questions that still need attention lead. Each group keeps
+         the original quiz order, and every item keeps its own question number. */
+      var order = this.dataset.map(function (q, i) {
+        var ans = self.answers[i];
+        return { index: i, rank: ans === -1 ? 1 : (ans === q.shuffledCorrect ? 2 : 0) };
+      }).sort(function (a, b) { return a.rank - b.rank || a.index - b.index; });
+      order.forEach(function (entry) {
+        var i = entry.index;
+        var q = self.dataset[i];
+        var ans = self.answers[i];
+        var status = ans === -1 ? 'skipped' : (ans === q.shuffledCorrect ? 'correct' : 'wrong');
+        var item = document.createElement('div');
+        item.className = 'review-item rv-' + status;
+        var qRow = document.createElement('div');
+        qRow.className = 'review-q';
+        var num = document.createElement('span');
+        num.className = 'rv-num';
+        num.textContent = String(i + 1);
+        var qText = document.createElement('span');
+        qText.textContent = q.question;
+        qText.dir = isRtl(q.question) ? 'rtl' : 'auto';
+        qRow.appendChild(num); qRow.appendChild(qText);
+        item.appendChild(qRow);
+        var body = document.createElement('div');
+        body.className = 'review-body';
+        var note = document.createElement('div');
+        note.className = 'rv-note';
+        note.textContent = QuizI18n.t(status === 'correct' ? 'review.youWereRight' : status === 'wrong' ? 'review.youWereWrong' : 'review.youSkipped');
+        body.appendChild(note);
+        var lineYou = document.createElement('div');
+        lineYou.className = 'rv-line';
+        var lblYou = document.createElement('span');
+        lblYou.textContent = QuizI18n.t('review.your');
+        lineYou.appendChild(lblYou);
+        if (self.settings.showAnswers) {
+          var opt = document.createElement('span');
+          opt.className = 'rv-opt' + (status === 'correct' ? ' rv-opt-correct' : status === 'wrong' ? ' rv-opt-wrong' : '');
+          opt.textContent = ans === -1 ? QuizI18n.t('review.none') : q.shuffledOptions[ans];
+          opt.dir = ans !== -1 && isRtl(q.shuffledOptions[ans]) ? 'rtl' : 'auto';
+          lineYou.appendChild(opt);
+          body.appendChild(lineYou);
+          if (status !== 'correct') {
+            var lineKey = document.createElement('div');
+            lineKey.className = 'rv-line';
+            var lblKey = document.createElement('span');
+            lblKey.textContent = QuizI18n.t('review.correctAns');
+            var optKey = document.createElement('span');
+            optKey.className = 'rv-opt rv-opt-correct';
+            optKey.textContent = q.shuffledOptions[q.shuffledCorrect];
+            optKey.dir = isRtl(q.shuffledOptions[q.shuffledCorrect]) ? 'rtl' : 'auto';
+            lineKey.appendChild(lblKey); lineKey.appendChild(optKey);
+            body.appendChild(lineKey);
+          }
+        } else {
+          var opt2 = document.createElement('span');
+          opt2.className = 'rv-opt';
+          opt2.textContent = ans === -1 ? QuizI18n.t('review.none') : q.shuffledOptions[ans];
+          opt2.dir = ans !== -1 && isRtl(q.shuffledOptions[ans]) ? 'rtl' : 'auto';
+          lineYou.appendChild(opt2);
+          body.appendChild(lineYou);
+        }
+        item.appendChild(body);
+        list.appendChild(item);
+      });
+      this.openModal('modalReview');
+    },
+
+    /* ---------- keyboard ---------- */
+    bindKeyboard: function () {
+      var self = this;
+      document.addEventListener('keydown', function (e) {
+        // Escape closes the topmost modal first, then the phone drawer. The
+        // modal stack keeps its own branch so nothing about it changes.
+        if (e.key === 'Escape') {
+          if (self.modalStack.length) { e.preventDefault(); self.closeTopModal(); return; }
+          if (self.isMobile() && self.navStripOpen) { e.preventDefault(); self.closeNavDrawer(true); }
+          return;
+        }
+        // Ignore when typing in inputs or modal open
+        var tag = (e.target && e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (self.modalStack.length) return;
+        if (!$('screen-quiz').classList.contains('active')) return;
+
+        if (e.key >= '1' && e.key <= '9') {
+          var idx = parseInt(e.key, 10) - 1;
+          var q = self.dataset[self.current];
+          if (q && idx < q.shuffledOptions.length) { e.preventDefault(); self.selectOption(idx); }
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          self.next();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault(); self.prev();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault(); self.next();
+        }
+      });
+    },
+
+    bindNav: function () {
+      var self = this;
+      $('btnNext').addEventListener('click', function () { self.next(); });
+      $('btnPrev').addEventListener('click', function () { self.prev(); });
+      $('btnNavToggle').addEventListener('click', function () {
+        // persist=true is honoured on desktop only (see setNavStripOpen).
+        self.setNavStripOpen(!self.navStripOpen, true);
+      });
+      // Phone drawer dismissals: backdrop and its close button. A number tap
+      // closes from buildNavStrip, Escape from bindKeyboard, and the breakpoint
+      // itself from onLayoutModeChange.
+      var backdrop = $('navBackdrop');
+      if (backdrop) backdrop.addEventListener('click', function () { self.closeNavDrawer(true); });
+      var navClose = $('btnNavClose');
+      if (navClose) navClose.addEventListener('click', function () { self.closeNavDrawer(true); });
+      if (!self._mqMobile) self._mqMobile = window.matchMedia('(max-width:640px)');
+      var onMQChange = function () { self.onLayoutModeChange(); };
+      if (self._mqMobile.addEventListener) self._mqMobile.addEventListener('change', onMQChange);
+      else if (self._mqMobile.addListener) self._mqMobile.addListener(onMQChange);
+      $('btnReview').addEventListener('click', function () { self.openReview(); });
+      $('btnPlayAgain').addEventListener('click', function () {
+        // A fresh random draw from the full bank when it is still around, so
+        // a long TXT does not replay the same 20 rows; a resumed quiz only
+        // has its own rows, so those get reshuffled.
+        var pool = (self.sourcePool && self.sourcePool.length) ? self.sourcePool : self.dataset;
+        self.startQuiz({ title: self.masterTitle, questions: pool });
+      });
+      $('btnLoadAnother').addEventListener('click', function () {
+        self.showScreen('home');
+        self.switchTab('file');
+        self.openModal('modalImport');
+      });
+    }
+  };
+
+  // Boot
+  document.addEventListener('DOMContentLoaded', function () {
+    QuizApp.init();
+  });
+})();
+</script>
+</body>
+</html>

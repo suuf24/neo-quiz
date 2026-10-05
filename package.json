@@ -1,0 +1,7 @@
+{
+  "name": "quiz-master",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-file Quiz Master webapp with a Vercel serverless CORS fallback at /api/raw"
+}
